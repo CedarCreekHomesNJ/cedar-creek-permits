@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Permit Platform — Cedar Creek</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F5F3EE;color:#1B2A3B;font-size:14px;}
+#rail{position:fixed;top:0;left:0;width:200px;height:100vh;background:#1B2A3B;padding:16px 10px;z-index:10;}
+#main{margin-left:200px;padding:32px 40px 80px;min-height:100vh;}
+.wrap{max-width:900px;}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px 22px;}
+.mark{width:32px;height:32px;border-radius:6px;background:#C8922A;color:#1B2A3B;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;}
+.bname{font-size:13px;font-weight:600;color:#fff;}.bsub{font-size:10px;color:rgba(255,255,255,.4);}
+.nb{display:block;width:100%;text-align:left;background:none;border:none;color:rgba(255,255,255,.65);padding:10px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;margin-bottom:2px;}
+.nb:hover{background:rgba(255,255,255,.08);color:#fff;}
+.nb.on{background:rgba(200,146,42,.2);color:#E8B84B;}
+.pg{display:none;}.pg.on{display:block;}
+h1{font-size:22px;font-weight:600;margin-bottom:6px;}
+.sub{font-size:13px;color:#5A6A78;margin-bottom:24px;}
+.hrow{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px;}
+.card{background:#fff;border:1px solid #E2DDD6;border-radius:10px;padding:22px 24px;margin-bottom:16px;}
+.cl{font-size:11px;font-weight:600;color:#5A6A78;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.f{display:flex;flex-direction:column;gap:5px;}
+.f label{font-size:11px;font-weight:600;color:#5A6A78;text-transform:uppercase;letter-spacing:.04em;}
+.f input{width:100%;padding:9px 11px;font-size:13px;border:1px solid #D5D0C8;border-radius:6px;background:#fff;color:#1B2A3B;font-family:inherit;}
+.f input:focus{outline:none;border-color:#C8922A;box-shadow:0 0 0 3px rgba(200,146,42,.12);}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;font-size:13px;font-weight:500;border-radius:6px;cursor:pointer;border:none;font-family:inherit;text-decoration:none;}
+.bn{background:#1B2A3B;color:#fff;}.bn:hover{background:#253749;}
+.bo{background:#fff;border:1px solid #D5D0C8;color:#1B2A3B;}.bo:hover{background:#F5F3EE;}
+.bsm{padding:7px 14px;font-size:12px;}
+.bdel{background:none;border:1px solid #E8C8C2;color:#B0473A;padding:5px 10px;font-size:12px;border-radius:6px;cursor:pointer;font-family:inherit;}
+.bdel:hover{background:#FDECEA;}
+.empty{text-align:center;padding:60px 20px;color:#5A6A78;}
+.empty-icon{font-size:36px;margin-bottom:12px;}
+.empty a{color:#C8922A;cursor:pointer;text-decoration:underline;}
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+.lcard{background:#fff;border:1px solid #E2DDD6;border-radius:10px;padding:18px 20px;}
+.lname{font-size:14px;font-weight:600;margin-bottom:4px;}.lmeta{font-size:12px;color:#5A6A78;margin-bottom:14px;}
+.lbtns{display:flex;gap:8px;}
+.dz{border:2px dashed #D5D0C8;border-radius:10px;padding:40px 20px;text-align:center;cursor:pointer;}
+.dz:hover{border-color:#C8922A;background:rgba(200,146,42,.03);}
+.dz-ic{font-size:26px;color:#9AAAB6;margin-bottom:10px;}.dz-t{font-size:15px;font-weight:600;margin-bottom:4px;}.dz-s{font-size:12px;color:#5A6A78;}
+.st{padding:11px 15px;border-radius:8px;font-size:13px;margin-top:12px;}
+.sl{background:#EEF5FB;color:#2A6496;}.sd{background:#EBF5F0;color:#2D7A4F;}.se{background:#FDECEA;color:#B0473A;}
+.trows{display:flex;flex-direction:column;gap:8px;margin-bottom:4px;}
+.trow{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border:1px solid #E2DDD6;border-radius:8px;background:#F5F3EE;}
+.tinf{display:flex;align-items:center;gap:10px;}
+.tav{width:32px;height:32px;border-radius:50%;background:#1B2A3B;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.tnm{font-size:13px;font-weight:600;}.tsb{font-size:11px;color:#5A6A78;margin-top:1px;}
+.hr{height:1px;background:#E2DDD6;margin:16px 0;}
+/* FILL PAGE */
+.wrap{max-width:none;}
+#pg-library, #pg-upload, #pg-settings, #pg-packages { max-width: 900px; }
+.fill-layout{display:flex;gap:20px;align-items:flex-start;}
+.fill-sidebar{width:220px;flex-shrink:0;}
+.fill-form-wrap{flex:1;min-width:0;max-width:1400px;}
+.pill{display:inline-block;background:rgba(200,146,42,.18);color:#A07020;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle;}
+.pmrow{display:flex;flex-direction:column;gap:8px;}
+.pmb{display:flex;align-items:center;gap:10px;padding:10px 12px;border:2px solid #E2DDD6;border-radius:8px;cursor:pointer;background:#fff;font-family:inherit;text-align:left;width:100%;}
+.pmb:hover{border-color:#1B2A3B;}.pmb.on{border-color:#1B2A3B;background:rgba(27,42,59,.04);}
+.av{width:34px;height:34px;border-radius:50%;background:#EDE9E0;color:#5A6A78;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pmb.on .av{background:#1B2A3B;color:#fff;}
+.pname{font-size:13px;font-weight:600;}.pdet{font-size:11px;color:#5A6A78;margin-top:1px;}
+.res{display:flex;align-items:center;gap:14px;background:#EBF5F0;border:1px solid #BFDFC9;border-radius:10px;padding:14px 18px;margin-top:14px;}
+.rck{width:28px;height:28px;border-radius:50%;background:#2D7A4F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.rti{flex:1;}.rtit{font-size:13px;font-weight:600;color:#245235;}.rsub{font-size:12px;color:#2D7A4F;}
+/* FORM PREVIEW */
+.form-preview-wrap{position:relative;border:1px solid #E2DDD6;border-radius:8px;overflow:visible;cursor:crosshair;background:#fff;}
+.form-preview-wrap img{width:100%;display:block;}
+.form-scroll{max-height:75vh;overflow:auto;border:1px solid #E2DDD6;border-radius:8px;background:#EDE9E0;padding:4px;}
+.zoom-ctrl{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #D5D0C8;border-radius:8px;padding:4px 6px;flex-shrink:0;}
+.qp-strip{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;background:#FFF8E8;border:1px solid #F0DDB0;border-radius:8px;}
+.qp-label{font-size:10px;font-weight:600;color:#A07020;text-transform:uppercase;letter-spacing:.05em;width:100%;margin-bottom:2px;}
+.qp-chip{font-size:12px;padding:6px 11px;background:#fff;border:1.5px solid #E8C97A;border-radius:20px;cursor:pointer;color:#1B2A3B;font-family:inherit;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.qp-chip:hover{border-color:#C8922A;background:#FFFBF0;}
+.qp-chip.armed{background:#C8922A;color:#fff;border-color:#C8922A;}
+.zbtn{width:26px;height:26px;border:none;background:#F5F3EE;border-radius:6px;cursor:pointer;font-size:15px;font-weight:600;color:#1B2A3B;display:flex;align-items:center;justify-content:center;font-family:inherit;}
+.zbtn:hover{background:#E2DDD6;}
+.zreset{width:auto;padding:0 10px;font-size:11px;font-weight:500;}
+#zoom-pct{font-size:12px;color:#5A6A78;min-width:42px;text-align:center;font-variant-numeric:tabular-nums;}
+.placed-label{position:absolute;font-size:11px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1B2A3B;background:rgba(255,255,220,.9);border:1px solid rgba(200,146,42,.4);border-radius:3px;padding:1px 5px;white-space:nowrap;pointer-events:all;cursor:pointer;line-height:1.4;}
+.placed-label:hover{background:#FFF0CC;border-color:#C8922A;}
+/* POPUP MENU */
+.popup{position:fixed;background:#fff;border:1px solid #E2DDD6;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:1000;min-width:240px;max-height:420px;overflow-y:auto;padding:6px 0;}
+.popup-section{font-size:10px;font-weight:600;color:#9AAAB6;text-transform:uppercase;letter-spacing:.06em;padding:8px 14px 4px;}
+.popup-item{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;cursor:pointer;font-size:13px;}
+.popup-item:hover{background:#F5F3EE;}
+.popup-item-label{color:#1B2A3B;font-weight:500;}
+.popup-item-value{color:#5A6A78;font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.popup-divider{height:1px;background:#F0EBE3;margin:4px 0;}
+.popup-close{width:100%;text-align:center;padding:8px;font-size:12px;color:#9AAAB6;cursor:pointer;border-top:1px solid #F0EBE3;}
+.popup-close:hover{color:#B0473A;}
+#toasts{position:fixed;top:18px;right:18px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast{background:#1B2A3B;color:#fff;padding:11px 18px;border-radius:8px;font-size:13px;box-shadow:0 4px 20px rgba(0,0,0,.2);}
+.tok{background:#2D7A4F;}.terr{background:#B0473A;}
+</style>
+</head>
+<body>
+
+<div id="rail">
+  <div class="brand">
+    <div class="mark">CC</div>
+    <div><div class="bname">Permit Platform</div><div class="bsub">Cedar Creek</div></div>
+  </div>
+  <button class="nb on" onclick="go('fill')">📋  Fill a permit</button>
+  <button class="nb" onclick="go('packages')">🗂  Permit packages</button>
+  <button class="nb" onclick="go('library')">📂  Form library</button>
+  <button class="nb" onclick="go('upload')">⬆  Add new form</button>
+  <button class="nb" onclick="go('settings')">⚙  Company & team</button>
+</div>
+
+<div id="main"><div class="wrap">
+
+<!-- FILL -->
+<div id="pg-fill" class="pg on">
+  <h1>Fill a permit</h1>
+  <p class="sub">Click anywhere on the form where a value goes — pick from the list that pops up.</p>
+  <div id="fill-empty" class="empty">
+    <div class="empty-icon">📋</div>
+    <p>No form selected.</p>
+    <p style="font-size:13px;color:#9AAAB6;margin-top:8px;">Go to <a onclick="go('library')">Form library</a> and click "Fill out".</p>
+  </div>
+  <div id="fill-ws" style="display:none">
+    <div id="pkg-banner" style="display:none;background:#1B2A3B;color:#fff;border-radius:10px;padding:14px 20px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+      <div>
+        <div style="font-size:11px;color:#E8B84B;font-weight:600;text-transform:uppercase;letter-spacing:.05em;" id="pkg-banner-name"></div>
+        <div style="font-size:13px;margin-top:2px;" id="pkg-banner-progress"></div>
+      </div>
+      <button class="btn" style="background:#C8922A;color:#1B2A3B;" onclick="nextInPackage()" id="pkg-next-btn">Next form →</button>
+    </div>
+    <div class="fill-layout">
+      <!-- sidebar: PM picker + generate -->
+      <div class="fill-sidebar">
+        <div class="card" style="padding:16px 18px">
+          <div class="cl">Project manager</div>
+          <div id="pmpick" class="pmrow"></div>
+        </div>
+        <div class="card" style="padding:16px 18px;background:#EDE9E0;border-color:#D5D0C8;">
+          <div class="cl">Company info <span class="pill">auto-filled</span></div>
+          <div id="prof-chips" style="font-size:12px;color:#5A6A78;line-height:1.8;"></div>
+        </div>
+        <button class="btn bn" id="generate-btn" style="width:100%;justify-content:center;padding:13px;font-size:14px;font-weight:600;margin-bottom:12px;" onclick="doGenerate()">Generate PDF</button>
+        <button class="btn bo" style="width:100%;justify-content:center;font-size:12px;" onclick="clearPlacements()">Clear all placements</button>
+        <div id="fill-res" class="res" style="display:none;margin-top:12px;">
+          <div class="rck">✓</div>
+          <div class="rti"><div class="rtit">Ready to print</div><div class="rsub">Click to download.</div></div>
+          <a id="dl-link" class="btn bn bsm" href="#" target="_blank" style="margin-left:8px;">Download</a>
+        </div>
+      </div>
+      <!-- form preview -->
+      <div class="fill-form-wrap">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <p style="font-size:12.5px;color:#5A6A78;margin:0;">Click anywhere on the form to place a value. Click a placed value to remove it.</p>
+          <div class="zoom-ctrl">
+            <button class="zbtn" onclick="zoomOut()" title="Zoom out">−</button>
+            <span id="zoom-pct">100%</span>
+            <button class="zbtn" onclick="zoomIn()" title="Zoom in">+</button>
+            <button class="zbtn zreset" onclick="zoomReset()" title="Reset zoom">Reset</button>
+          </div>
+        </div>
+        <div id="quick-place-strip" style="display:none;margin-bottom:10px;"></div>
+        <div class="form-scroll" id="form-scroll">
+          <div class="form-preview-wrap" id="form-wrap" style="width:100%;">
+            <img id="form-img" src="" alt="Permit form">
+            <div id="placements"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PACKAGES -->
+<div id="pg-packages" class="pg">
+  <div class="hrow">
+    <div><h1>Permit packages</h1><p class="sub" style="margin:4px 0 0">Group forms that always go together — fill them in sequence, download as one zip.</p></div>
+  </div>
+
+  <div class="card">
+    <div class="cl">Create a package</div>
+    <div class="g2" style="margin-bottom:14px;">
+      <div class="f"><label>Package name</label><input id="pkg-name" placeholder="e.g. Manchester New Construction Package"></div>
+    </div>
+    <div class="cl" style="margin-bottom:10px;">Select forms to include</div>
+    <div id="pkg-form-picker" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
+    <button class="btn bn" onclick="createPackage()">Save package</button>
+  </div>
+
+  <div id="pkg-list"></div>
+  <div id="pkg-empty" class="empty" style="display:none">
+    <div class="empty-icon">🗂</div>
+    <p>No packages yet.</p>
+    <p style="font-size:13px;color:#9AAAB6;margin-top:8px;">Create one above using forms from your library.</p>
+  </div>
+</div>
+
+<!-- LIBRARY -->
+<div id="pg-library" class="pg">
+  <div class="hrow">
+    <div><h1>Form library</h1><p class="sub" style="margin:4px 0 0">All saved permits.</p></div>
+    <button class="btn bn bsm" onclick="go('upload')">+ Add form</button>
+  </div>
+  <div id="lgrid" class="lgrid"></div>
+  <div id="le" class="empty" style="display:none">
+    <div class="empty-icon">📂</div>
+    <p>No forms yet.</p>
+    <p style="font-size:13px;color:#9AAAB6;margin-top:8px;"><a onclick="go('upload')">Upload your first permit PDF</a></p>
+  </div>
+</div>
+
+<!-- UPLOAD -->
+<div id="pg-upload" class="pg">
+  <h1>Add a new form</h1>
+  <p class="sub">Upload a permit PDF. That's it — no setup needed. You place values when you fill it out.</p>
+  <div class="card">
+    <div class="cl">Form details</div>
+    <div class="g2">
+      <div class="f"><label>Form name</label><input id="uname" placeholder="e.g. NJ UCC Construction Permit"></div>
+      <div class="f"><label>Municipality</label><input id="umuni" placeholder="e.g. Manchester Township"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="cl">Upload PDF</div>
+    <div class="dz" id="dz"><div class="dz-ic">⬆</div><div class="dz-t">Drop permit PDF here or click to browse</div><div class="dz-s">Supports any NJ permit or municipal form</div></div>
+    <input type="file" id="fi" accept="application/pdf" style="display:none">
+    <div id="ust" style="display:none" class="st"></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="pg-settings" class="pg">
+  <div class="hrow">
+    <div><h1>Company & team</h1><p class="sub" style="margin:4px 0 0">Enter once — available to place on any permit.</p></div>
+    <button class="btn bn" onclick="saveProf()">Save</button>
+  </div>
+  <div class="card">
+    <div class="cl">Company info</div>
+    <div class="g2">
+      <div class="f"><label>Company name</label><input id="pf-company_name" placeholder="Cedar Creek Land and Homes"></div>
+      <div class="f"><label>Phone</label><input id="pf-phone" placeholder="732-804-2594"></div>
+      <div class="f"><label>Mailing address</label><input id="pf-address" placeholder="PO Box 925"></div>
+      <div class="f"><label>City, state, ZIP</label><input id="pf-city_state_zip" placeholder="Point Pleasant Boro, NJ 08742"></div>
+      <div class="f"><label>Email</label><input id="pf-email"></div>
+      <div class="f"><label>Fax</label><input id="pf-fax"></div>
+      <div class="f"><label>NJ contractor license #</label><input id="pf-license_number" placeholder="13VH..."></div>
+      <div class="f"><label>HIC registration #</label><input id="pf-hic_number" placeholder="13VH..."></div>
+      <div class="f"><label>Federal EIN</label><input id="pf-ein" placeholder="XX-XXXXXXX"></div>
+      <div class="f"><label>Insurance carrier</label><input id="pf-insurance_carrier"></div>
+      <div class="f"><label>Insurance policy #</label><input id="pf-insurance_policy"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="cl">Project managers</div>
+    <div id="tlist"></div>
+    <div class="hr"></div>
+    <div class="cl" style="margin-bottom:12px">Add project manager</div>
+    <div class="g2">
+      <div class="f"><label>Name</label><input id="tm-name" placeholder="Full name"></div>
+      <div class="f"><label>Title</label><input id="tm-title" placeholder="Project Manager"></div>
+      <div class="f"><label>Phone</label><input id="tm-phone" placeholder="732-555-0100"></div>
+      <div class="f"><label>Email</label><input id="tm-email" placeholder="name@cedarcreek.com"></div>
+    </div>
+    <button class="btn bn" style="margin-top:14px" onclick="addPm()">Add project manager</button>
+  </div>
+  <div class="card">
+    <div class="cl">Saved descriptions of work</div>
+    <p style="font-size:13px;color:#5A6A78;margin-bottom:14px;">Reuse common descriptions across permits — click to place them when filling out a form.</p>
+    <div id="desclist"></div>
+    <div class="hr"></div>
+    <div class="cl" style="margin-bottom:12px">Add a description</div>
+    <div class="f">
+      <label>Description text</label>
+      <input id="desc-text" placeholder="e.g. Construction of a new 1.5 story single family dwelling">
+    </div>
+    <button class="btn bn" style="margin-top:14px" onclick="addDesc()">Save description</button>
+  </div>
+</div>
+
+</div></div>
+
+<!-- POPUP MENU -->
+<div id="popup" class="popup" style="display:none"></div>
+
+<div id="toasts"></div>
+
+<script>
+const PK=['company_name','phone','address','city_state_zip','email','fax','license_number','hic_number','ein','insurance_carrier','insurance_policy'];
+const PL={company_name:'Company name',phone:'Phone',address:'Address',city_state_zip:'City / State / ZIP',email:'Email',fax:'Fax',license_number:'NJ License #',hic_number:'HIC #',ein:'Federal EIN',insurance_carrier:'Insurance carrier',insurance_policy:'Policy #'};
+
+let prof={}, team=[], forms=[], descriptions=[], packages=[];
+let activeForm=null, selPm=null;
+// placements: array of {x, y, label, value, id}
+let placements=[];
+// project fields entered this session
+let projValues={property_address:'',block:'',lot:'',zone:'',description_of_work:'',owner_name:'',owner_phone:'',owner_email:'',estimated_cost:''};
+// values placed so far this session (single form or whole package) — shown as quick-place chips
+let quickPlaceValues=[]; // [{label, value}]
+let armedValue=null; // {label, value} currently armed for one-click placement
+
+async function api(url,opts={}){const r=await fetch(url,opts);return r.json();}
+function toast(m,t=''){const el=document.createElement('div');el.className='toast'+(t?' t'+t:'');el.textContent=m;document.getElementById('toasts').appendChild(el);setTimeout(()=>el.remove(),3200);}
+const ini=n=>(n||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const esc=s=>(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const {format:fmt}=new Intl.DateTimeFormat('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});
+const today=()=>fmt(new Date());
+
+async function boot(){
+  [prof,team,forms,descriptions,packages]=await Promise.all([api('/api/profile'),api('/api/team'),api('/api/forms'),api('/api/descriptions'),api('/api/packages')]);
+  PK.forEach(k=>{const e=document.getElementById('pf-'+k);if(e)e.value=prof[k]||'';});
+  renderTeam(); renderLib(); renderDescList();
+}
+
+function go(id){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach((b,i)=>b.classList.toggle('on',['fill','packages','library','upload','settings'][i]===id));
+  document.getElementById('pg-'+id).classList.add('on');
+  if(id==='packages') renderPackagesPage();
+}
+
+// ── FILL ─────────────────────────────────────────────────────────────────
+let zoomLevel = 100;
+
+function applyZoom(){
+  document.getElementById('form-wrap').style.width = zoomLevel + '%';
+  document.getElementById('zoom-pct').textContent = zoomLevel + '%';
+}
+function zoomIn(){ zoomLevel = Math.min(zoomLevel + 25, 300); applyZoom(); }
+function zoomOut(){ zoomLevel = Math.max(zoomLevel - 25, 50); applyZoom(); }
+function zoomReset(){ zoomLevel = 100; applyZoom(); }
+
+function startFill(id){
+  activeForm=forms.find(f=>f.id===id);
+  if(!activeForm)return;
+  activePackage=null;
+  document.getElementById('pkg-banner').style.display='none';
+  document.getElementById('generate-btn').style.display='block';
+  document.getElementById('dl-link').textContent='Download';
+  selPm=null; placements=[]; projValues={};
+  quickPlaceValues=[]; armedValue=null;
+  zoomLevel=100;
+  document.getElementById('fill-empty').style.display='none';
+  document.getElementById('fill-ws').style.display='block';
+  document.getElementById('fill-res').style.display='none';
+  document.getElementById('form-img').src=activeForm.thumb+'?t='+Date.now();
+  applyZoom();
+  renderPmPicker(); renderProfChips(); renderPlacements(); renderQuickPlaceStrip();
+  go('fill');
+}
+
+function renderPmPicker(){
+  const el=document.getElementById('pmpick');
+  if(!team.length){el.innerHTML='<p style="font-size:12px;color:#9AAAB6;">Add project managers in Company & team.</p>';return;}
+  el.innerHTML=team.map(m=>`<button class="pmb${selPm===m.id?' on':''}" onclick="pickPm('${m.id}')"><div class="av">${ini(m.name)}</div><div><div class="pname">${esc(m.name)}</div><div class="pdet">${esc(m.title||m.phone||'')}</div></div></button>`).join('');
+  if(team.length===1)pickPm(team[0].id);
+}
+function pickPm(id){
+  selPm=id;
+  document.querySelectorAll('.pmb').forEach((b,i)=>b.classList.toggle('on',team[i]?.id===id));
+}
+
+function renderProfChips(){
+  const el=document.getElementById('prof-chips');
+  const items=PK.filter(k=>prof[k]);
+  el.innerHTML=items.map(k=>`<span style="color:#1B2A3B;font-weight:500">${PL[k]}:</span> ${esc(prof[k])}<br>`).join('');
+  if(!items.length) el.innerHTML='<span style="color:#9AAAB6">No company info saved.</span>';
+}
+
+// ── CLICK ON FORM → POPUP (or quick-place if a chip is armed) ───────────
+document.getElementById('form-wrap').addEventListener('click', function(e){
+  if(e.target.classList.contains('placed-label')) return; // handled by label click
+  const rect=this.getBoundingClientRect();
+  const img=document.getElementById('form-img');
+  const xPct=(e.clientX-rect.left)/img.offsetWidth*100;
+  const yPct=(e.clientY-rect.top)/img.offsetHeight*100;
+
+  if(armedValue){
+    placements.push({id:'p_'+Date.now(),label:armedValue.label,value:armedValue.value,xPct,yPct});
+    renderPlacements();
+    toast('Placed: '+armedValue.value,'ok');
+    // stay armed so you can place the same value multiple times in a row;
+    // click the chip again (or pick a new one) to change/disarm
+    return;
+  }
+
+  closePopup();
+  showPopup(e.clientX, e.clientY, xPct, yPct);
+});
+
+function buildMenuItems(){
+  const pm=team.find(m=>m.id===selPm)||{};
+  const items=[];
+  // Company info section
+  const compItems=PK.filter(k=>prof[k]).map(k=>({
+    label:PL[k],
+    value:prof[k],
+    section:'Company info',
+    hint: k==='company_name' ? 'also: Applicant / Owner / Name' : null
+  }));
+  if(compItems.length) items.push(...compItems);
+  // PM section
+  if(pm.name){
+    items.push({label:'PM — Name',value:pm.name,section:'Project manager'});
+    if(pm.phone) items.push({label:'PM — Phone',value:pm.phone,section:'Project manager'});
+    if(pm.email) items.push({label:'PM — Email',value:pm.email,section:'Project manager'});
+    if(pm.title) items.push({label:'PM — Title',value:pm.title,section:'Project manager'});
+  }
+  // Date
+  items.push({label:'Today\'s date',value:today(),section:'Date'});
+  // Saved descriptions
+  descriptions.forEach(d=>{
+    items.push({label:d.text.length>40?d.text.slice(0,40)+'…':d.text, value:d.text, section:'Saved descriptions'});
+  });
+  // Project fields — show existing values + blanks to type
+  const projLabels={property_address:'Property address',block:'Block',lot:'Lot',zone:'Zone',description_of_work:'Description of work',owner_name:'Owner name',owner_phone:'Owner phone',owner_email:'Owner email',estimated_cost:'Estimated cost'};
+  const projHints={owner_name:'also: Applicant Name (if owner is the applicant)'};
+  Object.entries(projLabels).forEach(([k,l])=>{
+    items.push({label:l,value:projValues[k]||'',section:'Project info',isProject:true,projKey:k,hint:projHints[k]||null});
+  });
+  return items;
+}
+
+function showPopup(cx, cy, xPct, yPct){
+  const pop=document.getElementById('popup');
+  const items=buildMenuItems();
+  let lastSection='';
+  let html='';
+  items.forEach(item=>{
+    if(item.section!==lastSection){
+      if(lastSection) html+='<div class="popup-divider"></div>';
+      html+=`<div class="popup-section">${esc(item.section)}</div>`;
+      lastSection=item.section;
+    }
+    if(item.isProject){
+      // show input for project fields
+      const isDesc = item.projKey === 'description_of_work';
+      html+=`<div class="popup-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
+        <span class="popup-item-label">${esc(item.label)}</span>
+        ${item.hint?`<span style="font-size:10.5px;color:#9AAAB6;margin-top:-3px;">${esc(item.hint)}</span>`:''}
+        <div style="display:flex;gap:6px;width:100%;">
+          <input id="proj-inp-${item.projKey}" type="text" value="${esc(item.value)}" placeholder="Enter value…"
+            style="flex:1;padding:5px 8px;font-size:12px;border:1px solid #D5D0C8;border-radius:5px;font-family:inherit;"
+            oninput="projValues['${item.projKey}']=this.value"
+            onclick="event.stopPropagation()">
+          <button onclick="placeProjectValue('${item.projKey}','${esc(item.label)}',${xPct},${yPct})"
+            style="padding:5px 10px;font-size:12px;background:#1B2A3B;color:#fff;border:none;border-radius:5px;cursor:pointer;">Place</button>
+        </div>
+        ${isDesc?`<div style="font-size:11px;color:#C8922A;cursor:pointer;margin-top:2px;" onclick="event.stopPropagation();saveDescFromPopup('${item.projKey}')">+ Save this description for reuse</div>`:''}
+      </div>`;
+    } else {
+      html+=`<div class="popup-item" onclick="placeValue('${esc(item.label)}','${esc(item.value)}',${xPct},${yPct})" style="flex-direction:column;align-items:flex-start;gap:1px;">
+        <div style="display:flex;justify-content:space-between;width:100%;">
+          <span class="popup-item-label">${esc(item.label)}</span>
+          <span class="popup-item-value">${esc(item.value)}</span>
+        </div>
+        ${item.hint?`<span style="font-size:10.5px;color:#9AAAB6;">${esc(item.hint)}</span>`:''}
+      </div>`;
+    }
+  });
+  html+=`<div class="popup-close" onclick="closePopup()">✕ Cancel</div>`;
+  pop.innerHTML=html;
+
+  // Position popup near click, keep on screen
+  pop.style.display='block';
+  const pw=pop.offsetWidth, ph=pop.offsetHeight;
+  const vw=window.innerWidth, vh=window.innerHeight;
+  let left=cx+8, top=cy-10;
+  if(left+pw>vw-10) left=cx-pw-8;
+  if(top+ph>vh-10) top=vh-ph-10;
+  if(top<10) top=10;
+  pop.style.left=left+'px';
+  pop.style.top=top+'px';
+}
+
+function placeProjectValue(key, label, xPct, yPct){
+  const val=projValues[key]||(document.getElementById('proj-inp-'+key)||{}).value||'';
+  if(!val){toast('Type a value first','err');return;}
+  projValues[key]=val;
+  placeValue(label, val, xPct, yPct);
+}
+
+async function saveDescFromPopup(key){
+  const val=(document.getElementById('proj-inp-'+key)||{}).value||projValues[key]||'';
+  if(!val){toast('Type a description first','err');return;}
+  await api('/api/descriptions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:val})});
+  descriptions=await api('/api/descriptions');
+  toast('Description saved for reuse','ok');
+}
+
+function placeValue(label, value, xPct, yPct){
+  if(!value){toast('No value to place','err');return;}
+  placements.push({id:'p_'+Date.now(),label,value,xPct,yPct});
+  rememberQuickValue(label, value);
+  renderPlacements();
+  closePopup();
+  toast('Placed: '+label,'ok');
+}
+
+function rememberQuickValue(label, value){
+  // de-dupe by value — keep the menu short and useful
+  if(!quickPlaceValues.some(q=>q.value===value)){
+    quickPlaceValues.push({label, value});
+  }
+  renderQuickPlaceStrip();
+}
+
+function renderQuickPlaceStrip(){
+  const wrap=document.getElementById('quick-place-strip');
+  if(!quickPlaceValues.length){wrap.style.display='none';wrap.innerHTML='';return;}
+  wrap.style.display='block';
+  wrap.innerHTML=`<div class="qp-strip">
+    <span class="qp-label">Quick place — click a value, then click where it goes</span>
+    ${quickPlaceValues.map((q,i)=>`<button type="button" class="qp-chip${armedValue&&armedValue.value===q.value?' armed':''}" onclick="armQuickValue(${i})" title="${esc(q.label)}">${esc(q.value)}</button>`).join('')}
+  </div>`;
+}
+
+function armQuickValue(i){
+  const q=quickPlaceValues[i];
+  if(armedValue && armedValue.value===q.value){
+    armedValue=null; // clicking the same chip again disarms it
+  } else {
+    armedValue=q;
+    toast('Click on the form to place "'+ (q.value.length>30?q.value.slice(0,30)+'…':q.value) +'"','');
+  }
+  renderQuickPlaceStrip();
+}
+
+function closePopup(){
+  document.getElementById('popup').style.display='none';
+}
+
+document.addEventListener('click', function(e){
+  const pop=document.getElementById('popup');
+  if(pop.style.display!=='none' && !pop.contains(e.target) && !document.getElementById('form-wrap').contains(e.target)){
+    closePopup();
+  }
+});
+
+function renderPlacements(){
+  const el=document.getElementById('placements');
+  el.innerHTML=placements.map(p=>`
+    <div class="placed-label" style="left:${p.xPct}%;top:${p.yPct}%;"
+         onclick="event.stopPropagation();removePlacement('${p.id}')"
+         title="Click to remove">
+      ${esc(p.value)}
+    </div>`).join('');
+}
+
+function removePlacement(id){
+  placements=placements.filter(p=>p.id!==id);
+  renderPlacements();
+}
+
+function clearPlacements(){
+  placements=[];
+  renderPlacements();
+  document.getElementById('fill-res').style.display='none';
+}
+
+async function doGenerate(){
+  if(!activeForm){toast('No form selected','err');return;}
+  if(!placements.length){toast('Place at least one value on the form first','err');return;}
+  try{
+    const r=await api(`/api/forms/fill`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({form_id:activeForm.id, placements})
+    });
+    if(r.ok){
+      document.getElementById('dl-link').href=r.url;
+      document.getElementById('fill-res').style.display='flex';
+      toast('Permit ready','ok');
+    } else toast('Error: '+(r.error||'unknown'),'err');
+  }catch(e){toast('Server error — please try again','err');}
+}
+
+// ── LIBRARY ──────────────────────────────────────────────────────────────
+function renderLib(){
+  const g=document.getElementById('lgrid'),e=document.getElementById('le');
+  if(!forms.length){g.innerHTML='';e.style.display='block';return;}
+  e.style.display='none';
+  g.innerHTML=forms.map(f=>`<div class="lcard"><div class="lname">${esc(f.name)}</div><div class="lmeta">${esc(f.municipality||'General permit')}</div><div class="lbtns"><button class="btn bn bsm" onclick="startFill('${f.id}')">Fill out</button><button class="btn bo bsm" onclick="delForm('${f.id}')">Delete</button></div></div>`).join('');
+}
+async function delForm(id){if(!confirm('Delete?'))return;await api('/api/forms/'+id,{method:'DELETE'});forms=await api('/api/forms');renderLib();toast('Deleted');}
+
+// ── PACKAGES ─────────────────────────────────────────────────────────────
+function renderPackagesPage(){
+  renderPkgFormPicker();
+  renderPkgList();
+}
+
+function renderPkgFormPicker(){
+  const el=document.getElementById('pkg-form-picker');
+  if(!forms.length){el.innerHTML='<p style="font-size:13px;color:#9AAAB6;">No forms in your library yet — add some first.</p>';return;}
+  el.innerHTML=forms.map(f=>`
+    <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid #E2DDD6;border-radius:7px;background:#F5F3EE;cursor:pointer;font-size:13px;">
+      <input type="checkbox" value="${f.id}" class="pkg-form-cb">
+      <span>${esc(f.name)}</span>
+      <span style="color:#9AAAB6;font-size:11.5px;margin-left:auto;">${esc(f.municipality||'')}</span>
+    </label>`).join('');
+}
+
+async function createPackage(){
+  const name=document.getElementById('pkg-name').value.trim();
+  if(!name){toast('Package name required','err');return;}
+  const ids=[...document.querySelectorAll('.pkg-form-cb:checked')].map(cb=>cb.value);
+  if(ids.length<2){toast('Select at least 2 forms for a package','err');return;}
+  await api('/api/packages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,form_ids:ids})});
+  packages=await api('/api/packages');
+  document.getElementById('pkg-name').value='';
+  document.querySelectorAll('.pkg-form-cb').forEach(cb=>cb.checked=false);
+  renderPkgList();
+  toast('Package "'+name+'" created','ok');
+}
+
+function renderPkgList(){
+  const el=document.getElementById('pkg-list');
+  const empty=document.getElementById('pkg-empty');
+  if(!packages.length){el.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  el.innerHTML=packages.map(p=>{
+    const names=p.form_ids.map(id=>forms.find(f=>f.id===id)?.name||'(deleted form)').join(', ');
+    return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+      <div>
+        <div style="font-size:14px;font-weight:600;">${esc(p.name)}</div>
+        <div style="font-size:12px;color:#5A6A78;margin-top:4px;">${esc(names)}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0;">
+        <button class="btn bn bsm" onclick="startPackageFill('${p.id}')">Fill out package</button>
+        <button class="btn bo bsm" onclick="delPackage('${p.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function delPackage(id){if(!confirm('Delete this package?'))return;await api('/api/packages/'+id,{method:'DELETE'});packages=await api('/api/packages');renderPkgList();toast('Deleted');}
+
+// ── PACKAGE FILL FLOW ────────────────────────────────────────────────────
+let activePackage=null, pkgFormIndex=0, pkgFilledFiles=[];
+
+function startPackageFill(id){
+  activePackage=packages.find(p=>p.id===id);
+  if(!activePackage)return;
+  pkgFormIndex=0;
+  pkgFilledFiles=[];
+  selPm=null; projValues={};
+  quickPlaceValues=[]; armedValue=null;
+  document.getElementById('generate-btn').style.display='none';
+  loadPackageForm();
+  go('fill');
+}
+
+function loadPackageForm(){
+  const formId=activePackage.form_ids[pkgFormIndex];
+  activeForm=forms.find(f=>f.id===formId);
+  if(!activeForm){toast('A form in this package was deleted','err');activePackage=null;return;}
+  placements=[];
+  armedValue=null;
+  zoomLevel=100;
+  document.getElementById('fill-empty').style.display='none';
+  document.getElementById('fill-ws').style.display='block';
+  document.getElementById('fill-res').style.display='none';
+  document.getElementById('form-img').src=activeForm.thumb+'?t='+Date.now();
+  applyZoom();
+  renderPmPicker(); renderProfChips(); renderPlacements(); renderQuickPlaceStrip();
+
+  // show package banner
+  const banner=document.getElementById('pkg-banner');
+  banner.style.display='flex';
+  document.getElementById('pkg-banner-name').textContent=activePackage.name;
+  document.getElementById('pkg-banner-progress').textContent=
+    `Form ${pkgFormIndex+1} of ${activePackage.form_ids.length} — ${activeForm.name}`;
+  const nextBtn=document.getElementById('pkg-next-btn');
+  nextBtn.textContent = (pkgFormIndex===activePackage.form_ids.length-1) ? 'Finish & download package' : 'Save & continue →';
+}
+
+async function nextInPackage(){
+  if(!placements.length){
+    if(!confirm('No values placed on this form yet. Continue anyway?')) return;
+  } else {
+    // generate this form's filled PDF and remember it
+    const r=await api(`/api/forms/fill`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({form_id:activeForm.id, placements})
+    });
+    if(r.ok){
+      pkgFilledFiles.push({filename:r.filename, form_name:activeForm.name});
+    } else {
+      toast('Error generating this form — skipping it','err');
+    }
+  }
+
+  if(pkgFormIndex < activePackage.form_ids.length-1){
+    pkgFormIndex++;
+    loadPackageForm();
+    toast('Moved to next form — your project info carried over','ok');
+  } else {
+    // finished — bundle into zip
+    if(!pkgFilledFiles.length){toast('No forms were completed','err');return;}
+    const r=await api('/api/package-zip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({files:pkgFilledFiles})});
+    if(r.ok){
+      document.getElementById('dl-link').href=r.url;
+      document.getElementById('dl-link').textContent='Download package (.zip)';
+      document.getElementById('fill-res').style.display='flex';
+      toast('Package ready — download below','ok');
+    } else toast('Error creating package zip','err');
+    document.getElementById('pkg-banner').style.display='none';
+    activePackage=null;
+  }
+}
+
+// ── UPLOAD ────────────────────────────────────────────────────────────────
+const dz=document.getElementById('dz'),fi=document.getElementById('fi');
+dz.addEventListener('click',()=>fi.click());
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.style.borderColor='#C8922A';});
+dz.addEventListener('dragleave',()=>dz.style.borderColor='');
+dz.addEventListener('drop',e=>{e.preventDefault();dz.style.borderColor='';if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);});
+fi.addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0]);});
+
+function setSt(t,m){const e=document.getElementById('ust');e.className='st s'+t;e.textContent=m;e.style.display='block';}
+
+// Configure pdf.js worker (served from the same CDN)
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+}
+
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result.split(',')[1]); // strip data: prefix
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function renderPdfThumbnail(file){
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+  const page = await pdf.getPage(1);
+  const viewport = page.getViewport({scale: 1.8}); // ~150dpi-equivalent clarity
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext('2d');
+  await page.render({canvasContext: ctx, viewport}).promise;
+  const dataUrl = canvas.toDataURL('image/png');
+  return {
+    base64: dataUrl.split(',')[1],
+    width: canvas.width,
+    height: canvas.height,
+  };
+}
+
+async function handleFile(file){
+  if(file.type!=='application/pdf'){toast('Please upload a PDF','err');return;}
+  const name=document.getElementById('uname').value.trim()||file.name.replace(/\.pdf$/i,'').replace(/[_\-]/g,' ');
+  document.getElementById('uname').value=name;
+  setSt('l','Rendering preview…');
+
+  try{
+    const [pdfBase64, thumb] = await Promise.all([
+      fileToBase64(file),
+      renderPdfThumbnail(file)
+    ]);
+
+    setSt('l','Uploading…');
+
+    const r = await api('/api/forms/upload', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name,
+        municipality: document.getElementById('umuni').value.trim(),
+        pdf_base64: pdfBase64,
+        thumb_base64: thumb.base64,
+        thumb_w: thumb.width,
+        thumb_h: thumb.height,
+      })
+    });
+    if(r.error) throw new Error(r.error);
+
+    forms=await api('/api/forms');
+    renderLib();
+    setSt('d','✓ "'+r.name+'" saved to library. Go to Form library to fill it out.');
+    document.getElementById('uname').value='';document.getElementById('umuni').value='';fi.value='';
+    toast('"'+r.name+'" added','ok');
+  }catch(e){
+    console.error(e);
+    setSt('e','Upload failed: '+(e.message||'unknown error'));
+  }
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────────────────
+async function saveProf(){
+  const p={};PK.forEach(k=>{const e=document.getElementById('pf-'+k);if(e)p[k]=e.value;});
+  await api('/api/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
+  prof=p; renderProfChips(); toast('Saved','ok');
+}
+function renderTeam(){
+  const el=document.getElementById('tlist');
+  if(!team.length){el.innerHTML='<p style="font-size:13px;color:#9AAAB6;padding:4px 0">No project managers yet.</p>';return;}
+  el.innerHTML='<div class="trows">'+team.map(m=>`<div class="trow"><div class="tinf"><div class="tav">${ini(m.name)}</div><div><div class="tnm">${esc(m.name)}</div><div class="tsb">${[m.title,m.phone,m.email].filter(Boolean).join(' · ')}</div></div></div><button class="bdel" onclick="remPm('${m.id}')">Remove</button></div>`).join('')+'</div>';
+}
+async function addPm(){
+  const name=document.getElementById('tm-name').value.trim();
+  if(!name){toast('Name required','err');return;}
+  const m={name,title:document.getElementById('tm-title').value.trim(),phone:document.getElementById('tm-phone').value.trim(),email:document.getElementById('tm-email').value.trim()};
+  await api('/api/team',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(m)});
+  team=await api('/api/team');renderTeam();
+  ['tm-name','tm-title','tm-phone','tm-email'].forEach(id=>document.getElementById(id).value='');
+  toast(name+' added','ok');
+}
+async function remPm(id){if(!confirm('Remove?'))return;await api('/api/team/'+id,{method:'DELETE'});team=await api('/api/team');renderTeam();}
+
+function renderDescList(){
+  const el=document.getElementById('desclist');
+  if(!descriptions.length){el.innerHTML='<p style="font-size:13px;color:#9AAAB6;padding:4px 0">No saved descriptions yet.</p>';return;}
+  el.innerHTML='<div class="trows">'+descriptions.map(d=>`<div class="trow"><div style="font-size:13px;color:#1B2A3B;flex:1;padding-right:12px;">${esc(d.text)}</div><button class="bdel" onclick="remDesc('${d.id}')">Remove</button></div>`).join('')+'</div>';
+}
+async function addDesc(){
+  const text=document.getElementById('desc-text').value.trim();
+  if(!text){toast('Enter a description first','err');return;}
+  await api('/api/descriptions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+  descriptions=await api('/api/descriptions');renderDescList();
+  document.getElementById('desc-text').value='';
+  toast('Description saved','ok');
+}
+async function remDesc(id){if(!confirm('Remove this description?'))return;await api('/api/descriptions/'+id,{method:'DELETE'});descriptions=await api('/api/descriptions');renderDescList();}
+
+boot();
+</script>
+</body>
+</html>
