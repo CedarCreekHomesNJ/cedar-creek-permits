@@ -83,10 +83,6 @@ h1{font-size:22px;font-weight:600;margin-bottom:6px;}
 .zreset{width:auto;padding:0 10px;font-size:11px;font-weight:500;}
 #zoom-pct{font-size:12px;color:#5A6A78;min-width:42px;text-align:center;font-variant-numeric:tabular-nums;}
 .placed-label{position:absolute;font-size:11px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1B2A3B;background:rgba(255,255,220,.9);border:1px solid rgba(200,146,42,.4);border-radius:3px;padding:1px 5px;white-space:nowrap;pointer-events:all;cursor:pointer;line-height:1.4;transform:translate(-2px,-2px);}
-.empty-marker{position:absolute;width:18px;height:18px;border-radius:50%;border:2px dashed #B0473A;background:rgba(176,71,58,.08);transform:translate(-50%,-50%);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#B0473A;pointer-events:all;}
-.empty-marker:hover{background:rgba(176,71,58,.18);border-style:solid;}
-.marker-toggle{width:auto;padding:0 12px;font-size:11.5px;font-weight:500;color:#5A6A78;}
-.marker-toggle.active{background:#B0473A;color:#fff;}
 .placed-label:hover{background:#FFF0CC;border-color:#C8922A;}
 /* POPUP MENU */
 .popup{position:fixed;background:#fff;border:1px solid #E2DDD6;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:1000;min-width:240px;max-height:420px;overflow-y:auto;padding:6px 0;}
@@ -158,15 +154,12 @@ h1{font-size:22px;font-weight:600;margin-bottom:6px;}
       <!-- form preview -->
       <div class="fill-form-wrap">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:12px;flex-wrap:wrap;">
-          <p style="font-size:12.5px;color:#5A6A78;margin:0;" id="form-hint">Click anywhere on the form to place a value. Click a placed value to remove it.</p>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <button class="zbtn marker-toggle" id="marker-toggle-btn" onclick="toggleMarkerMode()" title="Drop empty markers to remember blanks you still need to fill">+ Mark blank spot</button>
-            <div class="zoom-ctrl">
-              <button class="zbtn" onclick="zoomOut()" title="Zoom out">−</button>
-              <span id="zoom-pct">100%</span>
-              <button class="zbtn" onclick="zoomIn()" title="Zoom in">+</button>
-              <button class="zbtn zreset" onclick="zoomReset()" title="Reset zoom">Reset</button>
-            </div>
+          <p style="font-size:12.5px;color:#5A6A78;margin:0;" id="form-hint">Click anywhere on the form to type a value or pick a saved one. Click a placed value to remove it.</p>
+          <div class="zoom-ctrl">
+            <button class="zbtn" onclick="zoomOut()" title="Zoom out">−</button>
+            <span id="zoom-pct">100%</span>
+            <button class="zbtn" onclick="zoomIn()" title="Zoom in">+</button>
+            <button class="zbtn zreset" onclick="zoomReset()" title="Reset zoom">Reset</button>
           </div>
         </div>
         <div id="quick-place-strip" style="display:none;margin-bottom:10px;"></div>
@@ -302,9 +295,6 @@ let prof={}, team=[], forms=[], descriptions=[], packages=[];
 let activeForm=null, selPm=null;
 // placements: array of {x, y, label, value, id}
 let placements=[];
-let emptyMarkers=[]; // [{id, xPct, yPct}] -- spots flagged as "still needs a value"
-let markerMode=false;
-let pendingMarkerToResolve=null; // marker id being filled in via the popup, if any
 // project fields entered this session
 let projValues={property_address:'',block:'',lot:'',zone:'',description_of_work:'',owner_name:'',owner_phone:'',owner_email:'',estimated_cost:''};
 // values placed so far this session (single form or whole package) — shown as quick-place chips
@@ -351,8 +341,6 @@ function startFill(id){
   document.getElementById('dl-link').textContent='Download';
   selPm=null; placements=[]; projValues={};
   quickPlaceValues=[]; armedValue=null;
-  emptyMarkers=[]; markerMode=false; pendingMarkerToResolve=null;
-  resetMarkerToggleUI();
   zoomLevel=100;
   document.getElementById('fill-empty').style.display='none';
   document.getElementById('fill-ws').style.display='block';
@@ -361,13 +349,6 @@ function startFill(id){
   applyZoom();
   renderPmPicker(); renderProfChips(); renderPlacements(); renderQuickPlaceStrip();
   go('fill');
-}
-
-function resetMarkerToggleUI(){
-  const btn=document.getElementById('marker-toggle-btn');
-  const hint=document.getElementById('form-hint');
-  if(btn){ btn.classList.remove('active'); btn.textContent='+ Mark blank spot'; }
-  if(hint){ hint.textContent='Click anywhere on the form to place a value. Click a placed value to remove it.'; }
 }
 
 function renderPmPicker(){
@@ -388,10 +369,9 @@ function renderProfChips(){
   if(!items.length) el.innerHTML='<span style="color:#9AAAB6">No company info saved.</span>';
 }
 
-// ── CLICK ON FORM → POPUP (or quick-place / drop empty marker) ──────────
+// ── CLICK ON FORM → POPUP (or quick-place if a chip is armed) ───────────
 document.getElementById('form-wrap').addEventListener('click', function(e){
   if(e.target.classList.contains('placed-label')) return; // handled by label click
-  if(e.target.classList.contains('empty-marker')) return; // handled by marker click
   const img=document.getElementById('form-img');
   // Measure against the IMAGE itself, not its wrapper -- if the wrapper has
   // any padding/border the two won't align, causing a small but consistent
@@ -400,12 +380,6 @@ document.getElementById('form-wrap').addEventListener('click', function(e){
   const rect=img.getBoundingClientRect();
   const xPct=(e.clientX-rect.left)/rect.width*100;
   const yPct=(e.clientY-rect.top)/rect.height*100;
-
-  if(markerMode){
-    emptyMarkers.push({id:'m_'+Date.now(), xPct, yPct});
-    renderPlacements();
-    return;
-  }
 
   if(armedValue){
     placements.push({id:'p_'+Date.now(),label:armedValue.label,value:armedValue.value,xPct,yPct});
@@ -419,22 +393,6 @@ document.getElementById('form-wrap').addEventListener('click', function(e){
   closePopup();
   showPopup(e.clientX, e.clientY, xPct, yPct);
 });
-
-function toggleMarkerMode(){
-  markerMode=!markerMode;
-  const btn=document.getElementById('marker-toggle-btn');
-  const hint=document.getElementById('form-hint');
-  btn.classList.toggle('active', markerMode);
-  btn.textContent = markerMode ? '✕ Done marking' : '+ Mark blank spot';
-  hint.textContent = markerMode
-    ? 'Click anywhere you still need to fill in — a red dashed marker will appear there.'
-    : 'Click anywhere on the form to place a value. Click a placed value to remove it.';
-}
-
-function fillEmptyMarker(markerId, clientX, clientY, xPct, yPct){
-  closePopup();
-  showPopup(clientX, clientY, xPct, yPct, markerId);
-}
 
 function buildMenuItems(){
   const pm=team.find(m=>m.id===selPm)||{};
@@ -474,6 +432,21 @@ function showPopup(cx, cy, xPct, yPct){
   const items=buildMenuItems();
   let lastSection='';
   let html='';
+
+  // Always-first option: type something custom directly into this spot.
+  html+=`<div class="popup-section">Type something here</div>`;
+  html+=`<div class="popup-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
+    <div style="display:flex;gap:6px;width:100%;">
+      <input id="custom-text-inp" type="text" placeholder="Type anything…" autofocus
+        style="flex:1;padding:6px 9px;font-size:13px;border:1px solid #D5D0C8;border-radius:5px;font-family:inherit;"
+        onclick="event.stopPropagation()"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();placeCustomText(${xPct},${yPct});}">
+      <button onclick="placeCustomText(${xPct},${yPct})"
+        style="padding:6px 12px;font-size:12px;background:#1B2A3B;color:#fff;border:none;border-radius:5px;cursor:pointer;">Place</button>
+    </div>
+  </div>`;
+  html+='<div class="popup-divider"></div>';
+
   items.forEach(item=>{
     if(item.section!==lastSection){
       if(lastSection) html+='<div class="popup-divider"></div>';
@@ -519,6 +492,19 @@ function showPopup(cx, cy, xPct, yPct){
   if(top<10) top=10;
   pop.style.left=left+'px';
   pop.style.top=top+'px';
+
+  // Explicitly focus the custom-text box so the user can start typing
+  // immediately without an extra click -- the autofocus attribute alone
+  // is unreliable on dynamically-inserted HTML.
+  const customInp=document.getElementById('custom-text-inp');
+  if(customInp) setTimeout(()=>customInp.focus(), 0);
+}
+
+function placeCustomText(xPct, yPct){
+  const inp=document.getElementById('custom-text-inp');
+  const val=(inp && inp.value || '').trim();
+  if(!val){toast('Type something first','err');return;}
+  placeValue('Custom text', val, xPct, yPct);
 }
 
 function placeProjectValue(key, label, xPct, yPct){
@@ -539,10 +525,6 @@ async function saveDescFromPopup(key){
 function placeValue(label, value, xPct, yPct){
   if(!value){toast('No value to place','err');return;}
   placements.push({id:'p_'+Date.now(),label,value,xPct,yPct});
-  if(pendingMarkerToResolve){
-    emptyMarkers = emptyMarkers.filter(m=>m.id!==pendingMarkerToResolve);
-    pendingMarkerToResolve=null;
-  }
   rememberQuickValue(label, value);
   renderPlacements();
   closePopup();
@@ -580,7 +562,6 @@ function armQuickValue(i){
 
 function closePopup(){
   document.getElementById('popup').style.display='none';
-  pendingMarkerToResolve=null;
 }
 
 document.addEventListener('click', function(e){
@@ -592,29 +573,12 @@ document.addEventListener('click', function(e){
 
 function renderPlacements(){
   const el=document.getElementById('placements');
-  const filledHtml = placements.map(p=>`
+  el.innerHTML = placements.map(p=>`
     <div class="placed-label" style="left:${p.xPct}%;top:${p.yPct}%;"
          onclick="event.stopPropagation();removePlacement('${p.id}')"
          title="Click to remove">
       ${esc(p.value)}
     </div>`).join('');
-  const markerHtml = emptyMarkers.map(m=>`
-    <div class="empty-marker" style="left:${m.xPct}%;top:${m.yPct}%;"
-         onclick="event.stopPropagation();handleMarkerClick(event,'${m.id}',${m.xPct},${m.yPct})"
-         title="Click to fill this in, or shift-click to remove">?</div>`).join('');
-  el.innerHTML = filledHtml + markerHtml;
-}
-
-function handleMarkerClick(e, markerId, xPct, yPct){
-  if(e.shiftKey){
-    emptyMarkers = emptyMarkers.filter(m=>m.id!==markerId);
-    renderPlacements();
-    return;
-  }
-  // Open the normal popup at this exact spot; once a value is chosen the
-  // marker is removed and a real placement takes its place.
-  pendingMarkerToResolve = markerId;
-  showPopup(e.clientX, e.clientY, xPct, yPct);
 }
 
 function removePlacement(id){
@@ -624,7 +588,6 @@ function removePlacement(id){
 
 function clearPlacements(){
   placements=[];
-  emptyMarkers=[];
   renderPlacements();
   document.getElementById('fill-res').style.display='none';
 }
@@ -728,8 +691,6 @@ function loadPackageForm(){
   if(!activeForm){toast('A form in this package was deleted','err');activePackage=null;return;}
   placements=[];
   armedValue=null;
-  emptyMarkers=[]; markerMode=false; pendingMarkerToResolve=null;
-  resetMarkerToggleUI();
   zoomLevel=100;
   document.getElementById('fill-empty').style.display='none';
   document.getElementById('fill-ws').style.display='block';
