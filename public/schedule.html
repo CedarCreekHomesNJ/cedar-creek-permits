@@ -252,7 +252,7 @@ input[type=checkbox]{width:auto}
   </div>
 
   <div class="settings">
-    <label for="setDur">Default task length</label>
+    <label for="setDur">Default days after the previous task</label>
     <input type="number" id="setDur" min="1" max="60" value="7">
     <span>working days</span>
     <label><input type="checkbox" id="setInsp"> Apply to township inspections</label>
@@ -360,7 +360,7 @@ const PHASES_STD = [
   T('cut-sheet','Cut sheet to site','eng',2,'stakeout'),
   T('toilet','Order portable toilet','adm',1,'clear-lot',{k:'order',l:3})]],
  ['Phase 3 · Construction',[
-  T('found-dig','Foundation & porch dig','exc',4,'cut-sheet,toilet'),
+  T('found-dig','Foundation & porch dig','exc',4,'cut-sheet,toilet,bldg-permit,elec-permit,plumb-permit,fire-permit,grading,sewer-appr,ochd,ocscd'),
   T('fwin-order','Measure & order foundation windows','con',5,'found-dig',{k:'order',l:10}),
   T('drywell','Drywell set','exc',2,'found-dig'),
   T('footings-dug','Footings dug','con',3,'found-dig'),
@@ -537,7 +537,7 @@ function instantiate(j){
     if(j.wip&&j.wip[t.id]) s='wip';
     if(j.fail&&j.fail[t.id]) s='fail';
     const info=(j.wip&&j.wip[t.id])||null;
-    m[t.id]={s,on:(info&&info.on)||null,note:(info&&info.note)||(j.fail&&j.fail[t.id])||'',who:'',lead:null};
+    m[t.id]={s,on:(info&&info.on)||null,due:null,doneOn:null,note:(info&&info.note)||(j.fail&&j.fail[t.id])||'',who:'',lead:null,lag:null};
   });
   STATE[j.id]=m;
 }
@@ -549,7 +549,8 @@ const leadOf=(t,rec)=> rec&&rec.lead!=null ? rec.lead : (t.l!=null?t.l:(NO_LEAD.
 /* Task length. Whatever you set on a task wins. Otherwise the estimate from
    your sheet is raised to the default floor — inspections are left alone
    unless you tick the box, since their real elapsed time is township queue. */
-const baseDur=(t,rec)=> (rec&&rec.dur!=null) ? rec.dur
+const baseDur=(t,rec)=> (rec&&rec.lag!=null) ? rec.lag
+  : (rec&&rec.dur!=null) ? rec.dur
   : ((t.k==='insp'&&!SETTINGS.minDurInsp) ? t.d : Math.max(t.d, SETTINGS.minDur));
 
 const whoOf=(job,t,rec)=> (rec&&rec.who) || (job.crew&&job.crew[t.tr]) || CREW[t.tr] || TRADE[t.tr][0];
@@ -585,31 +586,52 @@ function paceOf(job,list,M){
   return Math.min(2.5,Math.max(0.6,expect/actual));
 }
 function build(job){
-  const list=LIST[job.id], M=STATE[job.id], B=byId(job.id), SU=succOf(job.id), st={}, mob=D(job.start);
+  const list=LIST[job.id], M=STATE[job.id], SU=succOf(job.id), st={}, mob=D(job.start);
   const pace=paceOf(job,list,M);
-  const dur=(t,rec)=>Math.max(1,Math.round(baseDur(t,rec)*pace));
+  const lagOf=(t,rec)=>Math.max(1,Math.round(baseDur(t,rec)*pace));
   list.forEach(t=>{
-    const rec=M[t.id]||(M[t.id]={s:'todo',on:null,note:'',who:'',lead:null});
+    const rec=M[t.id]||(M[t.id]={s:'todo',due:null,doneOn:null,note:'',who:'',lead:null,lag:null});
     const r={t,rec,s:rec.s,lead:leadOf(t,rec)};
-    r.dur=dur(t,rec);
-    if(r.s==='done'||r.s==='na'){r.es=wd(TODAY,-1);r.ef=r.es;st[t.id]=r;return}
-    let es=TODAY>mob?TODAY:mob;
-    t.deps.forEach(dp=>{const p=st[dp];if(!p)return;
-      const f=wd(wd(p.ef,p.t.g?p.t.g:0),1); if(f>es)es=f});
+    r.lag=lagOf(t,rec);
+
+    /* Finished work anchors on the day it actually finished, so finishing
+       early pulls everything behind it forward. */
+    if(r.s==='done'||r.s==='na'){
+      r.ef = rec.doneOn ? D(rec.doneOn) : wd(TODAY,-1);
+      r.es = r.ef; st[t.id]=r; return;
+    }
+
+    /* Earliest this could get going: the day after every predecessor is
+       finished, plus township turnaround on any inspection. */
+    let es = TODAY>mob?TODAY:mob, driver=null;
+    t.deps.forEach(dp=>{const pr=st[dp]; if(!pr) return;
+      const f=wd(wd(pr.ef, pr.t.g?pr.t.g:0), 1);
+      if(f>es){es=f; driver=pr}});
     if(rec.on){const o=D(rec.on); if(o>es)es=o}
-    else if(r.s==='wip'&&es<TODAY) es=TODAY;
-    r.es=es; r.ef=wd(es,Math.max(0,r.dur-1)); st[t.id]=r;
+    if(r.s==='wip'&&es<TODAY) es=TODAY;
+    r.es=es; r.driver=driver;
+
+    r.auto = wd(es, Math.max(0,r.lag-1));            // default target completion
+    r.ef   = rec.due ? D(rec.due) : r.auto;
+    if(r.ef<r.es) r.ef=r.es;
+    r.tight = rec.due ? wdiff(r.auto, r.ef) : 0;     // negative = you committed tighter than the chain allows
+    st[t.id]=r;
   });
+
   const endT = st['co']||st[list[list.length-1].id];
-  const end=endT.ef;
+  const end = endT.ef;
   list.slice().reverse().forEach(t=>{
     const r=st[t.id], sc=SU[t.id]||[];
-    r.lf = sc.length ? sc.reduce((m,s)=>{const c=wd(wd(st[s].lf,-(Math.max(0,st[s].dur-1))),-(1+(t.g||0)));return c<m?c:m},new Date(864e13)) : end;
-    r.ls = wd(r.lf,-(Math.max(0,r.dur-1)));
-    const settled=r.s==='done'||r.s==='na';
-    r.slack=settled?99:wdiff(r.es,r.ls);
-    r.crit=!settled&&r.slack<=0;
+    r.lf = sc.length ? sc.reduce((m,sid)=>{
+      const succStart = wd(st[sid].lf, -(Math.max(0,st[sid].lag-1)));
+      const mustFinish = wd(succStart, -(1+(t.g||0)));
+      return mustFinish<m?mustFinish:m;
+    }, new Date(864e13)) : end;
+    const settled = r.s==='done'||r.s==='na';
+    r.slack = settled?99:wdiff(r.ef, r.lf);
+    r.crit  = !settled && r.slack<=0;
   });
+
   const doneN=list.filter(t=>['done','na'].includes(st[t.id].s)).length;
   let tot=0,dn=0;
   list.forEach(t=>{const d=Math.max(1,baseDur(t,M[t.id]));tot+=d;if(['done','na'].includes(st[t.id].s))dn+=d});
@@ -735,7 +757,7 @@ function item(a){
     ${tile(TAGICON[a.tag]||'check',PCOLOR[a.p])}
     <div class="body">
       <div class="ttl">${esc(a.act)}</div>
-      <div class="meta">${dot(t.tr)}${esc(whoOf(P.job,t,r.rec))} · ${esc(P.job.name)} · ${fmt(r.es)}&ndash;${fmt(r.ef)}</div>
+      <div class="meta">${dot(t.tr)}${esc(whoOf(P.job,t,r.rec))} · ${esc(P.job.name)} · due ${fmt(r.ef)}</div>
       <div class="why">${a.why}</div>
     </div>
     <div class="right"><span class="badge ${bc}">${a.tag}</span>
@@ -797,7 +819,8 @@ function vJobs(){
         ${r.rec.note?`<div style="font-size:11.5px;color:var(--text-3);font-weight:400">${esc(r.rec.note)}</div>`:''}</td>
       <td><span class="badge ${bc}">${SLABEL[r.s]}</span></td>
       <td>${dot(t.tr)}${esc(whoOf(P.job,t,r.rec))}</td>
-      <td class="num">${open?fmt(r.es)+' – '+fmt(r.ef):(r.rec.on?fmtL(D(r.rec.on)):'—')}</td>
+      <td class="num">${open?fmt(r.ef)+(r.tight<0?' <span style="color:var(--error)" title="tighter than the chain allows">!</span>':'')
+        :(r.rec.doneOn?fmtL(D(r.rec.doneOn)):'—')}</td>
       <td class="num" style="${r.crit?'color:var(--error-text);font-weight:600':''}">${!open?'—':r.crit?'Critical':r.slack+'d float'}</td></tr>`;
   });
   const over=P.slip<0;
@@ -828,7 +851,7 @@ function vJobs(){
       <button class="btn" id="editJob">Edit Job &amp; Crew</button></div>
     <div style="padding:7px 14px;font-size:11.5px;color:var(--text-3);border-bottom:1px solid var(--divider)">
       Showing ${shown.length} of ${P.list.length} tasks${q?` matching &ldquo;${esc(query)}&rdquo;`:''}${filter==='open'&&!q?` · ${nDone+nNa} completed or not applicable are hidden`:''}. Select a row to update it.</div>
-    <div class="tblwrap"><table><thead><tr><th>Task</th><th>Status</th><th>Assigned To</th><th>Scheduled</th><th>Float</th></tr></thead>
+    <div class="tblwrap"><table><thead><tr><th>Task</th><th>Status</th><th>Assigned To</th><th>Target / Completed</th><th>Float</th></tr></thead>
       <tbody>${rows||`<tr><td colspan="5"><div class="empty"><div class="t">Nothing matches this filter</div>
         Try All (${P.list.length}) or clear the search.</div></td></tr>`}</tbody></table></div></div>`;
 }
@@ -847,7 +870,7 @@ function vTrades(){
         <span class="badge">${c.rows.length} task${c.rows.length>1?'s':''}</span></div>
       <div class="tblwrap"><table><tbody>${c.rows.map(({job,t,r})=>`
         <tr class="row" data-edit="${job.id}|${t.id}"><td style="width:32%">${esc(job.name)}</td>
-        <td class="n">${esc(t.n)}</td><td class="num">${fmt(r.es)} – ${fmt(r.ef)}</td>
+        <td class="n">${esc(t.n)}</td><td class="num">start ~${fmt(r.es)} · due ${fmt(r.ef)}</td>
         <td class="num">${r.lead?r.lead+'d notice':''}</td></tr>`).join('')}</tbody></table></div>`).join('')
       :`<div class="empty"><div class="t">No trade work scheduled in the next six weeks</div>Nothing is queued on the open jobs.</div>`}</div>`;
 }
@@ -856,12 +879,12 @@ function vLook(){
   const weeks=[];let w=new Date(TODAY);w.setDate(w.getDate()-((w.getDay()+6)%7));
   for(let i=0;i<6;i++){const s=new Date(w);s.setDate(s.getDate()+i*7);const e=new Date(s);e.setDate(e.getDate()+6);weeks.push([s,e])}
   const rows=PLAN.filter(P=>!P.job.closed);
-  return `<div class="card la"><div class="card-h">${tile('cal','var(--brand)','sm')}<div class="t">6-Week Look-Ahead</div></div>
+  return `<div class="card la"><div class="card-h">${tile('cal','var(--brand)','sm')}<div class="t">6-Week Look-Ahead <small>· by target completion</small></div></div>
   <div class="tblwrap"><table><thead><tr><th>Job</th>
     ${weeks.map(([s],i)=>`<th class="${i===0?'wknow':''}">Wk of ${fmt(s)}</th>`).join('')}</tr></thead><tbody>
   ${rows.map(P=>`<tr><td><b>${esc(P.job.name)}</b><div style="font-size:11.5px;color:var(--text-3)">${esc(P.job.town)}</div></td>
     ${weeks.map(([s,e],i)=>{const items=P.list.map(t=>({t,r:P.st[t.id]}))
-      .filter(x=>!['done','na'].includes(x.r.s)&&x.r.es>=s&&x.r.es<=e);
+      .filter(x=>!['done','na'].includes(x.r.s)&&x.r.ef>=s&&x.r.ef<=e);
       return `<td class="${i===0?'wknow':''}">${items.map(({t})=>
         `<span class="blk" style="border-color:${TRADE[t.tr][1]}">${t.k==='insp'?'▸ ':''}${esc(t.n)}</span>`).join('')}</td>`}).join('')}
   </tr>`).join('')}</tbody></table></div></div>`;
@@ -921,9 +944,9 @@ function handoff(jobId,tid){
         <div class="ttl">${esc(who)}</div>
         <div class="meta">${dot(r.t.tr)}${esc(TRADE[r.t.tr][0])} · ${esc(r.t.n)}</div>
         <div class="why" style="border-left-color:${late?'var(--error)':'var(--brand)'}">
-          ${r.t.k==='insp' ? `Ready to book. Township turnaround runs about ${r.t.g} working days.`
-            : r.lead>0 ? `Starts about <b>${fmt(r.es)}</b> and needs ${r.lead} days notice, so ${late?'<b>this call is already due</b>':'call by <b>'+fmt(by)+'</b>'}.`
-            : `Clear to start <b>${fmt(r.es)}</b>. Nobody is scheduled on it.`}</div></div>
+          Now due <b>${fmt(r.ef)}</b>. ${r.t.k==='insp' ? `Ready to book — township turnaround runs about ${r.t.g} working days.`
+            : r.lead>0 ? `Can start ${fmt(r.es)}; ${r.lead} days notice needed, so ${late?'<b>this call is already due</b>':'call by <b>'+fmt(by)+'</b>'}.`
+            : `Clear to start ${fmt(r.es)}. Nobody is scheduled on it.`}</div></div>
       <div class="right">${late?'<span class="badge error">Call now</span>':'<span class="badge info">Next</span>'}
         ${r.crit?'<span class="badge inverse">Critical path</span>':''}</div></button>`};
   modal(`<div class="modal" role="dialog" aria-modal="true" aria-label="What is next">
@@ -962,16 +985,25 @@ function editor(jobId,tid){
         ${['todo','wip','done','na'].concat(t.k==='insp'?['fail']:[]).map(s=>
           `<button data-s="${s}" class="${rec.s===s?'on':''}">${SLABEL[s]}</button>`).join('')}</div></div>
       <div class="two">
-        <div class="fld"><label>${t.k==='insp'?'Inspection date':'Start / scheduled date'}</label>
-          <input type="date" id="edOn" value="${rec.on||''}">
-          <div class="help">Leave blank and the engine schedules it: ${fmt(r.es)} – ${fmt(r.ef)}.</div></div>
-        <div class="fld"><label>Notice needed (days)</label><input type="number" min="0" max="120" id="edLead" value="${r.lead}">
-          <div class="help">${rec.lead!=null?'Set by you.':(t.l!=null?'From your tracker.':(NO_LEAD.includes(t.tr)?'Not a contractor — no notice needed.':'Default 7 days.'))}</div></div>
+        <div class="fld"><label>Target completion date</label>
+          <input type="date" id="edDue" value="${rec.due||iso(r.ef)}">
+          <div class="help">${rec.due?'Set by you.':'Worked out automatically.'}
+            ${r.driver?`${r.lag} days after <b>${esc(r.driver.t.n)}</b> finishes (${fmt(r.driver.ef)}).`
+                      :`${r.lag} days from when it can start (${fmt(r.es)}).`}
+            ${r.tight<0?`<br><b style="color:var(--error-text)">${Math.abs(r.tight)} day(s) tighter than the chain allows.</b>`:''}</div></div>
+        <div class="fld"><label>Days after the previous task finishes</label>
+          <input type="number" min="1" max="200" id="edLag" value="${baseDur(t,rec)}">
+          <div class="help">${rec.lag!=null||rec.dur!=null?'Set by you.':`Default ${SETTINGS.minDur} days.`}
+            ${P.pace!==1&&SETTINGS.pace?` Stretched to <b>${r.lag}</b> to match this job's pace.`:''}</div></div>
       </div>
-      <div class="fld"><label>How long it takes (working days)</label>
-        <input type="number" min="1" max="200" id="edDur" value="${baseDur(t,rec)}">
-        <div class="help">${rec.dur!=null?'Set by you.':`Default ${SETTINGS.minDur} days.`}
-          ${P.pace!==1&&SETTINGS.pace?` Stretched to <b>${r.dur} days</b> to match this job's pace.`:''}</div></div>
+      <div class="two">
+        <div class="fld"><label>Completed on</label>
+          <input type="date" id="edDoneOn" value="${rec.doneOn||''}">
+          <div class="help">Filled in when you mark it complete. Back-date it if it finished earlier — everything behind it moves up.</div></div>
+        <div class="fld"><label>Notice needed (days)</label><input type="number" min="0" max="120" id="edLead" value="${r.lead}">
+          <div class="help">${rec.lead!=null?'Set by you.':(t.l!=null?'From your tracker.':(NO_LEAD.includes(t.tr)?'Not a contractor — no notice needed.':'Default 7 days.'))}</div>
+          ${r.lead>0?`<div class="help">Call by <b>${fmt(cal(r.es,-r.lead))}</b>.</div>`:''}</div>
+      </div>
       <div class="fld"><label>Assigned to</label>
         <select id="edWho"><option value="">— Crew default for this job (${esc(whoOf(P.job,t,{}))}) —</option>
           ${ROSTER.map(n=>`<option ${rec.who===n?'selected':''}>${esc(n)}</option>`).join('')}</select>
@@ -997,11 +1029,17 @@ function editor(jobId,tid){
     const commit=status=>{
       const M=STATE[jobId][tid];
       const was=M.s;
-      M.s=status||cur; M.on=node.querySelector('#edOn').value||null;
+      M.s=status||cur;
+      M.due=node.querySelector('#edDue').value||null;
+      if(r.auto && M.due===iso(r.auto)) M.due=null;   // still matches the automatic date
       const lv=node.querySelector('#edLead').value;
       M.lead=lv===''?null:Math.max(0,parseInt(lv,10)||0);
-      const dv=node.querySelector('#edDur').value;
-      M.dur=dv===''?null:Math.max(1,parseInt(dv,10)||1);
+      const gv=node.querySelector('#edLag').value;
+      M.lag=gv===''?null:Math.max(1,parseInt(gv,10)||1);
+      M.dur=null;
+      M.doneOn=node.querySelector('#edDoneOn').value||null;
+      if((M.s==='done'||M.s==='na')&&!M.doneOn) M.doneOn=iso(TODAY);
+      if(M.s!=='done'&&M.s!=='na') M.doneOn=null;
       M.who=node.querySelector('#edWho').value; M.note=node.querySelector('#edNote').value;
       const becameDone = M.s==='done' && was!=='done';
       close(); recompute(); render(view); persist(jobId);
@@ -1017,7 +1055,7 @@ function editor(jobId,tid){
       LIST[jobId].forEach((x,i)=>x.i=i);
       delete STATE[jobId][tid]; close(); recompute(); render(view); persist(jobId);
     };
-    node.querySelector('#edOn').focus();
+    node.querySelector('#edDue').focus();
   });
 }
 
@@ -1040,7 +1078,7 @@ function addTask(jobId,anchorId,phaseName){
         <div class="fld"><label>Phase</label><select id="ntPhase">${phases.map(p=>`<option ${p===anchor.ph?'selected':''}>${esc(p)}</option>`).join('')}</select></div>
         <div class="fld"><label>Trade</label><select id="ntTrade">${tradeOpts(anchor.tr)}</select></div></div>
       <div class="two">
-        <div class="fld"><label>How long (working days)</label><input type="number" id="ntDur" min="1" max="200" value="7"></div>
+        <div class="fld"><label>Days after the previous task finishes</label><input type="number" id="ntDur" min="1" max="200" value="7"></div>
         <div class="fld"><label>Notice needed (days)</label><input type="number" id="ntLead" min="0" max="120" value="7"></div></div>
       <div class="fld"><label>Kind</label><select id="ntKind">
         <option value="field">Work on site</option><option value="call">A call to make</option>
@@ -1081,7 +1119,7 @@ function addTask(jobId,anchorId,phaseName){
       const at=LIST[jobId].findIndex(x=>x.id===anchor.id);
       LIST[jobId].splice(at+1,0,t);
       LIST[jobId].forEach((x,i)=>x.i=i);
-      STATE[jobId][id]={s:'todo',on:null,note:'',who:'',lead:null,dur:null};
+      STATE[jobId][id]={s:'todo',on:null,due:null,doneOn:null,note:'',who:'',lead:null,lag:null};
       if(node.querySelector('#ntTpl').checked){
         const master=PHASES_MASTER[P.job.kind], ph=master.find(p=>p[0]===t.ph);
         if(ph) ph[1].push({...t,custom:true});
