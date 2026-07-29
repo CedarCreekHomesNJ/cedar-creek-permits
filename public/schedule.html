@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Field Desk | Cedar Creek Land &amp; Homes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Lightning Design System palette + metrics */
+:root{
+  --brand:#0176D3; --brand-dark:#014486; --brand-hover:#0B5CAB; --brand-tint:#EEF4FF;
+  --bg:#F3F3F3; --card:#FFFFFF; --border:#E5E5E5; --border-strong:#C9C9C9; --divider:#F3F3F3;
+  --text:#181818; --text-2:#444444; --text-3:#5C5C5C; --text-weak:#747474; --th:#514F4D;
+  --success:#2E844A; --success-bg:#CDEFC4; --success-text:#056764;
+  --warning:#FE9339; --warning-bg:#FBEBDD; --warning-text:#8C4B02;
+  --error:#EA001E;   --error-bg:#FEDED8;   --error-text:#B60554;
+  --offline:#444444;
+  --r:.25rem; --shadow:0 2px 2px 0 rgba(0,0,0,.05);
+  --f:'Salesforce Sans',Inter,-apple-system,'Segoe UI',Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--f);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a,.link{color:var(--brand);text-decoration:none;cursor:pointer}
+a:hover,.link:hover{text-decoration:underline}
+
+/* ---------- global header ---------- */
+.global-header{background:#FFFFFF;border-bottom:1px solid var(--border);padding:6px 16px;display:flex;align-items:center;gap:14px}
+.gh-logo{font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--text)}
+.gh-logo span{color:var(--text-weak);font-weight:400}
+.gh-sp{flex:1}
+.gh-meta{font-size:12px;color:var(--text-3)}
+
+/* ---------- app bar + tabs ---------- */
+.app-bar{background:#FFFFFF;border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.app-name{display:flex;align-items:center;gap:9px;padding:8px 0;font-size:15px;font-weight:700}
+.tabs{display:flex;gap:2px;overflow-x:auto}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:11px 14px 9px;cursor:pointer;
+  font-family:inherit;font-size:13px;font-weight:400;color:var(--text-2);white-space:nowrap}
+.tabs button:hover{color:var(--brand);border-bottom-color:var(--border-strong)}
+.tabs button[aria-selected="true"]{color:var(--brand);font-weight:600;border-bottom-color:var(--brand)}
+.tabs button:focus-visible{outline:2px solid var(--brand);outline-offset:-2px}
+.tabcount{display:inline-block;background:var(--error);color:#fff;border-radius:9px;font-size:10px;font-weight:700;
+  padding:0 5px;margin-left:6px;vertical-align:1px;min-width:16px;text-align:center}
+
+/* ---------- icon tiles ---------- */
+.tile{width:26px;height:26px;border-radius:var(--r);background:var(--brand);display:inline-flex;align-items:center;
+  justify-content:center;flex:0 0 auto}
+.tile svg{width:15px;height:15px;fill:#fff}
+.tile.sm{width:20px;height:20px}.tile.sm svg{width:12px;height:12px}
+.tile.lg{width:34px;height:34px}.tile.lg svg{width:20px;height:20px}
+
+/* ---------- page ---------- */
+.page{max-width:1240px;margin:0 auto;padding:12px 16px 72px}
+.page-header{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:12px 16px;margin-bottom:12px}
+.ph-top{display:flex;align-items:flex-start;gap:12px}
+.ph-eyebrow{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.02em}
+.ph-title{font-size:20px;font-weight:700;line-height:1.2;letter-spacing:-.01em}
+.ph-fields{display:flex;gap:34px;flex-wrap:wrap;margin-top:11px;padding-top:10px;border-top:1px solid var(--divider)}
+.ph-f .k{font-size:11px;color:var(--text-3);margin-bottom:1px}
+.ph-f .v{font-size:14px;font-weight:600}
+
+/* ---------- buttons ---------- */
+.btn{font-family:inherit;font-size:13px;line-height:1.7;background:#fff;border:1px solid var(--border-strong);
+  color:var(--brand);border-radius:var(--r);padding:2px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--brand-tint)}
+.btn:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+.btn.brand{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.brand:hover{background:var(--brand-hover);border-color:var(--brand-hover)}
+.btn.on{background:var(--brand-tint);border-color:var(--brand);font-weight:600}
+.btn.danger{color:var(--error);border-color:var(--error)}
+.btn.danger:hover{background:var(--error-bg)}
+
+/* ---------- settings bar ---------- */
+.settings{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);
+  padding:8px 14px;margin-bottom:12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-2)}
+.settings label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.settings .sp{flex:1}
+.settings input[type=number]{width:56px}
+#paceNote{color:var(--text-3);font-size:12px}
+
+/* ---------- cards ---------- */
+.grid{display:grid;grid-template-columns:300px 1fr;gap:12px;align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:12px}
+.card-h{display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--border)}
+.card-h .t{font-size:15px;font-weight:700;flex:1}
+.card-h .t small{font-weight:400;color:var(--text-3);font-size:12px}
+.card-b{padding:0}
+.card-f{padding:8px 14px;border-top:1px solid var(--border);text-align:center}
+
+/* ---------- job list ---------- */
+.jrow{padding:10px 14px;border-bottom:1px solid var(--divider);cursor:pointer}
+.jrow:last-child{border-bottom:0}
+.jrow:hover{background:#F8FAFC}
+.jrow.on{background:var(--brand-tint);box-shadow:inset 3px 0 0 var(--brand)}
+.jrow.closed{opacity:.62}
+.jrow .n{font-size:13px;font-weight:600;color:var(--brand)}
+.jrow .m{font-size:11.5px;color:var(--text-3)}
+.prog{height:6px;background:#ECEBEA;border-radius:3px;margin:7px 0 5px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--brand);border-radius:3px}
+.prog.done i{background:var(--success)}
+
+/* ---------- badges ---------- */
+.badge{display:inline-block;font-size:11px;line-height:1.6;padding:0 8px;border-radius:11px;background:#ECEBEA;color:var(--text-2);white-space:nowrap}
+.badge.success{background:var(--success-bg);color:var(--success-text)}
+.badge.warning{background:var(--warning-bg);color:var(--warning-text)}
+.badge.error{background:var(--error-bg);color:var(--error-text)}
+.badge.info{background:var(--brand-tint);color:var(--brand-dark)}
+.badge.inverse{background:var(--offline);color:#fff}
+
+/* ---------- action items ---------- */
+.item{display:flex;gap:11px;padding:11px 14px;border-bottom:1px solid var(--divider);width:100%;background:none;
+  border-left:0;border-right:0;border-top:0;text-align:left;font-family:inherit;cursor:pointer}
+.item:last-child{border-bottom:0}
+.item:hover{background:#F8FAFC}
+.item:focus-visible{outline:2px solid var(--brand);outline-offset:-2px}
+.item .body{flex:1;min-width:0}
+.item .ttl{font-size:13.5px;font-weight:600;color:var(--brand);margin-bottom:2px}
+.item .meta{font-size:12px;color:var(--text-3)}
+.item .why{margin-top:7px;background:#FAFAF9;border-left:3px solid var(--border-strong);padding:6px 9px;font-size:12px;color:var(--text-2);border-radius:0 var(--r) var(--r) 0}
+.item .why b{color:var(--text)}
+.item.p1 .why{border-left-color:var(--error)}
+.item.p2 .why{border-left-color:var(--warning)}
+.item.p3 .why{border-left-color:var(--brand)}
+.item .right{flex:0 0 auto;text-align:right;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+
+/* ---------- path (phase chevrons) ---------- */
+.path{display:flex;gap:3px;padding:12px 14px;overflow-x:auto}
+.pstep{flex:1 1 0;min-width:130px;background:#ECEBEA;color:var(--text-2);font-size:12px;font-weight:600;
+  padding:7px 12px 7px 22px;position:relative;clip-path:polygon(0 0,calc(100% - 11px) 0,100% 50%,calc(100% - 11px) 100%,0 100%,11px 50%)}
+.pstep:first-child{padding-left:14px;clip-path:polygon(0 0,calc(100% - 11px) 0,100% 50%,calc(100% - 11px) 100%,0 100%)}
+.pstep:last-child{clip-path:polygon(0 0,100% 0,100% 100%,0 100%,11px 50%)}
+.pstep.done{background:#C5E7CB;color:#056764}
+.pstep.now{background:var(--brand);color:#fff}
+.pstep .c{display:block;font-weight:400;font-size:11px;opacity:.85}
+
+/* ---------- tables ---------- */
+table{width:100%;border-collapse:collapse}
+th{font-size:11.5px;font-weight:600;color:var(--th);text-align:left;padding:7px 12px;background:#FAFAF9;
+  border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:7px 12px;border-bottom:1px solid var(--divider);font-size:13px;vertical-align:top}
+tr:last-child td{border-bottom:0}
+tr.row{cursor:pointer}
+tr.row:hover td{background:#F8FAFC}
+td.n{color:var(--brand);font-weight:600}
+td.num{white-space:nowrap;color:var(--text-3)}
+tr.grp td{background:#FAFAF9;font-weight:700;font-size:12px;color:var(--th);text-transform:uppercase;letter-spacing:.03em;padding:6px 12px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:1px}
+.tblwrap{overflow-x:auto}
+
+/* ---------- look-ahead ---------- */
+.la table{min-width:840px}
+.la td{border-left:1px solid var(--divider);padding:6px}
+.la th{border-left:1px solid var(--border);text-align:center}
+.la th:first-child,.la td:first-child{border-left:0;position:sticky;left:0;background:var(--card);min-width:158px}
+.la th:first-child{background:#FAFAF9}
+.wknow{background:#FFFBF5}
+.blk{display:block;font-size:11.5px;line-height:1.35;padding:3px 7px;margin-bottom:3px;border-left:3px solid;
+  background:#FAFAF9;border-radius:0 var(--r) var(--r) 0}
+
+/* ---------- modal ---------- */
+.scrim{position:fixed;inset:0;background:rgba(43,40,38,.6);display:flex;align-items:center;justify-content:center;z-index:60;padding:16px}
+@media(max-width:640px){.scrim{align-items:flex-end;padding:0}}
+.modal{background:#fff;border-radius:var(--r);width:min(640px,100%);max-height:92vh;display:flex;flex-direction:column;
+  box-shadow:0 2px 12px rgba(0,0,0,.28)}
+.m-h{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px}
+.m-h .t{font-size:19px;font-weight:700;line-height:1.25}
+.m-h .s{font-size:12px;color:var(--text-3);margin-top:2px}
+.m-x{margin-left:auto;background:none;border:0;color:var(--text-3);font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
+.m-x:hover{color:var(--brand)}
+.m-b{padding:16px 18px;overflow:auto;flex:1}
+.m-f{padding:11px 18px;border-top:1px solid var(--border);background:#FAFAF9;display:flex;gap:8px;align-items:center;
+  border-radius:0 0 var(--r) var(--r)}
+.m-f .sp{flex:1}
+
+/* ---------- form ---------- */
+.fld{margin-bottom:14px}
+.fld>label{display:block;font-size:12px;color:var(--text-3);margin-bottom:4px}
+.fld>label .req{color:var(--error);margin-right:2px}
+input,select,textarea{width:100%;font-family:inherit;font-size:13px;color:var(--text);background:#fff;
+  border:1px solid var(--border-strong);border-radius:var(--r);padding:5px 9px}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--brand);box-shadow:0 0 0 1px var(--brand)}
+input[type=checkbox]{width:auto}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.two{grid-template-columns:1fr}}
+.help{font-size:11.5px;color:var(--text-3);margin-top:4px;line-height:1.45}
+.seg{display:flex;flex-wrap:wrap;gap:0}
+.seg button{font-family:inherit;font-size:12.5px;background:#fff;border:1px solid var(--border-strong);border-right-width:0;
+  padding:5px 13px;cursor:pointer;color:var(--brand)}
+.seg button:first-child{border-radius:var(--r) 0 0 var(--r)}
+.seg button:last-child{border-right-width:1px;border-radius:0 var(--r) var(--r) 0}
+.seg button.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+.seg button.on[data-s="fail"]{background:var(--error);border-color:var(--error)}
+.seg button.on[data-s="done"]{background:var(--success);border-color:var(--success)}
+.deps{font-size:12.5px;color:var(--text-2);line-height:1.75}
+.deps b{color:var(--text)}
+.deps .no{color:var(--error);font-weight:700}
+.crewrow{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.crewrow .lbl{flex:0 0 152px;font-size:12.5px}
+.inline-add{margin-top:6px;display:flex;gap:8px}
+
+.empty{padding:34px 20px;text-align:center;color:var(--text-3)}
+.empty .t{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px}
+.foot{font-size:11.5px;color:var(--text-3);line-height:1.7;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
+.foot b{color:var(--text-2)}
+@media (prefers-reduced-motion:no-preference){.item{animation:fi .18s ease both}@keyframes fi{from{opacity:0}}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div class="global-header">
+  <div class="gh-logo">Cedar Creek <span>Land &amp; Homes</span></div>
+  <div class="gh-sp"></div>
+  <div class="gh-meta" id="hdrDate"></div>
+  <span class="badge" id="syncState">Starting…</span>
+  <button class="btn" id="save">Export backup</button>
+  <button class="btn" id="load">Import backup</button>
+  <input type="file" id="file" accept="application/json" hidden>
+</div>
+
+<div class="app-bar">
+  <div class="app-name">
+    <span class="tile"><svg viewBox="0 0 24 24"><path d="M12 3 2 11h3v9h6v-6h2v6h6v-9h3z"/></svg></span>
+    Field Desk</div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-v="today">Today</button>
+    <button role="tab" aria-selected="false" data-v="jobs">Job Sheet</button>
+    <button role="tab" aria-selected="false" data-v="trades">Trades</button>
+    <button role="tab" aria-selected="false" data-v="look">6-Week Look-Ahead</button>
+  </nav>
+</div>
+
+<main class="page">
+  <div class="page-header">
+    <div class="ph-top">
+      <span class="tile lg"><svg viewBox="0 0 24 24"><path d="M4 4h16v2H4zm0 5h16v2H4zm0 5h10v2H4zm12.5 6.5-3.5-3.5 1.4-1.4 2.1 2.1 4.6-4.6 1.4 1.4z"/></svg></span>
+      <div>
+        <div class="ph-eyebrow">Construction Schedule</div>
+        <div class="ph-title">Field Desk</div>
+      </div>
+    </div>
+    <div class="ph-fields">
+      <div class="ph-f"><div class="k">Jobs</div><div class="v" id="hdrJobs"></div></div>
+      <div class="ph-f"><div class="k">Needs you today</div><div class="v" id="hdrActs" style="color:var(--error)"></div></div>
+      <div class="ph-f"><div class="k">Next gate</div><div class="v" id="hdrGate">—</div></div>
+      <div class="ph-f"><div class="k">Nearest CO</div><div class="v" id="hdrCO">—</div></div>
+    </div>
+  </div>
+
+  <div class="settings">
+    <label for="setDur">Default task length</label>
+    <input type="number" id="setDur" min="1" max="60" value="7">
+    <span>working days</span>
+    <label><input type="checkbox" id="setInsp"> Apply to township inspections</label>
+    <label><input type="checkbox" id="setPace" checked> Stretch remaining work to my actual pace</label>
+    <span class="sp"></span>
+    <span id="paceNote"></span>
+  </div>
+
+  <div id="view"></div>
+
+  <div class="foot">
+    <b>How this works.</b> Every task carries predecessors, a length in working days, and a notice period in calendar days.
+    A forward pass from what you've marked complete gives each job its projected CO date and critical path; eight rules then decide what reaches this screen.
+    Change one status and everything recomputes.<br>
+    <b>Defaults.</b> Notice periods and task lengths fall back to 7 days unless your sheet specified otherwise or you've set them on the task.
+    Township inspections are excluded from the length default, since their real elapsed time is the township's turnaround.<br>
+    <b>Contractors.</b> Each job carries its own crew across 22 trades, set on the job and overridable on any single task.
+    Mark a task complete and you'll get the hand-off — who to contact next, and by when.<br>
+    <b>What each screen shows.</b> Today is a triage list — only tasks that trip one of the rules reach it, so a task that is on schedule and not yet due will not appear.
+    The Job Sheet is the complete record: use the Open / Complete / All filters or the search box to reach any of the 149 tasks, including finished ones.
+    Trades and the look-ahead cover the next six weeks on open jobs only; closed jobs drop out of both.<br>
+    <b>Changes live in this browser tab.</b> Use Download changes to keep them.
+  </div>
+</main>
+<script>
+
+
+/* =====================================================================
+   0. CONNECTION  — paste your two Supabase values here, nothing else
+   ===================================================================== */
+const SUPABASE_URL  = 'https://jsxdcbabvbwmcwjgfscv.supabase.co/rest/v1/';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzeGRjYmFidmJ3bWN3amdmc2N2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNDQ0NDEsImV4cCI6MjEwMDkyMDQ0MX0.kc1XBQeS-XM-4Ue0krPT8G8Q4kp87HI5ClGNOwz-lIg';
+const REQUIRE_LOGIN = true;   // set to false to skip the email login while testing
+
+/* =====================================================================
+   1. REFERENCE DATA
+   ===================================================================== */
+const TODAY = new Date(2026,6,28);
+const LEAD_DEFAULT = 7;
+const NO_LEAD = ['adm','mun'];
+
+const TRADE = {
+  adm:['Office / you','#51616F'],      eng:['Engineering & survey','#6C4BB6'],
+  exc:['Excavation & grading','#8A6134'], con:['Concrete & masonry','#5A6672'],
+  fra:['Framing & lumber','#B36C22'],  rof:['Roofing','#0E7A48'],
+  sid:['Siding','#12855C'],            gut:['Gutters','#2F8F6E'],
+  plu:['Plumbing','#0F5AA8'],          ele:['Electric','#C8102E'],
+  hva:['HVAC','#7E4B9E'],              uti:['Utility companies','#B98400'],
+  wsw:['Water & sewer','#1B7FA8'],     isl:['Insulation','#3F7286'],
+  dry:['Drywall','#4E6E7D'],           trm:['Trim, doors & millwork','#9C5B3D'],
+  cab:['Cabinets & countertops','#8A4A2F'], str:['Stairs & railing','#6B5344'],
+  pnt:['Painting','#A03E77'],          flr:['Flooring','#7A3E6E'],
+  til:['Tile & glass','#C2557F'],      lan:['Landscaping & sod','#3F7A3F'],
+  pav:['Driveway & paving','#4A4A4A'], mun:['Township / inspection','#131F29']
+};
+const CREW = {
+  eng:'PDS', exc:'Jason Arbor Smith', con:'Jan Mycek - Mason', fra:'Wilson Fernandez - FC Framing',
+  rof:'MJ Lyons Corp - Junio', sid:'MJ Lyons Corp - Junio', gut:'Rich - Gutters',
+  plu:'Gold Eagle Plumbing - Artur', ele:'Mario Sarama - Electrician', hva:'HVAC - Majek',
+  uti:'JCPL / NJ Natural Gas', wsw:'Dave Derasmo', isl:'Hudson Insulation - Jason',
+  dry:'CDS Drywall - Chris', trm:'Mountain Millwork - Chip', cab:'S&L Custom Cabinets - Jack',
+  str:'M&E Contractors INC - Stairs', pnt:'Mike - Painter', flr:'Lexi Flooring', til:'Greg Kozek',
+  lan:'Brian Magee - Lot work', pav:'Just Paving LLC', adm:'You', mun:'Township'
+};
+const SETTINGS = {minDur:7, minDurInsp:false, pace:true};
+let ROSTER = ['Ahmet Kamil','Jeff Jerman','Lisa Jerman','Kevin Duerkes','PDS','Dario','Leslie Ramdeen','Ron Post',
+ 'Jason Arbor Smith','Brian Magee - Lot work','Jan Mycek - Mason','Georgie - Mason','Wilson Fernandez - FC Framing',
+ 'Rocco - Northeastern Lumber','MJ Lyons Corp - Junio','M&E Contractors INC - Stairs','Railing Mench','Rusty Iron Works',
+ 'Gold Eagle Plumbing - Artur','City Group Plumbing - Andrew','Mario Sarama - Electrician','Lighthouse Electrician - Mike',
+ 'HVAC - Majek','Hudson Insulation - Jason','CDS Drywall - Chris','Mountain Millwork - Chip','Marek Raisin',
+ 'S&L Custom Cabinets - Jack','Hard Surface Kings','Lexi Flooring','Greg Kozek','Dan - Tile','Mike - Painter',
+ 'Liberty Garage Door','Rich - Gutters','Sean - Dumsters','Dave Derasmo','Lucas Zitek','AA and B Builder Corporation',
+ 'Just Paving LLC','Township Inspector'];
+
+const T = (id,n,tr,d,deps,o={})=>({id,n,tr,d,deps:deps?deps.split(','):[],...o});
+const PHASES_STD = [
+ ['Phase 1 · Pre-variance',[
+  T('house-type','Decide house type','adm',5,'',{k:'admin'}),
+  T('engineer','Contact engineer to begin work','eng',3,'house-type',{k:'call'}),
+  T('plans-dario','Contact Dario for house plans','eng',10,'house-type',{k:'call'}),
+  T('plans-pds','Supply plans to PDS','eng',2,'plans-dario,engineer'),
+  T('board-exhibit','Create board for use at hearing','adm',5,'plans-pds'),
+  T('board-meeting','Board meeting with engineer','eng',30,'board-exhibit',{l:14}),
+  T('res-approval','Resolution of Approval','eng',30,'board-meeting'),
+  T('res-review','Resolution of Approval review','adm',5,'res-approval'),
+  T('roc-reqs','Resolution of Compliance requirements received','eng',15,'res-review'),
+  T('roc-submit','Resolution of Compliance submitted to township','eng',10,'roc-reqs')]],
+ ['Phase 2 · Pre-construction',[
+  T('variance','Variance approval','mun',1,'board-meeting'),
+  T('ochd','OCHD approval','mun',30,'roc-submit'),
+  T('ocscd','OCSCD approval','mun',30,'roc-submit'),
+  T('plans-ordered','House plans ordered','eng',20,'variance'),
+  T('zoning','Zoning permit','mun',3,'roc-submit,plans-ordered',{k:'admin'}),
+  T('bldg-permit','Building permit','mun',10,'zoning',{k:'admin'}),
+  T('elec-permit','Electrical permit','mun',10,'zoning',{k:'admin'}),
+  T('plumb-permit','Plumbing permit','mun',10,'zoning',{k:'admin'}),
+  T('fire-permit','Fire sub-code permit','mun',10,'zoning',{k:'admin'}),
+  T('grading','Grading approval','mun',10,'zoning',{k:'admin'}),
+  T('sewer-appr','Sewer authority approval','mun',12,'zoning',{k:'admin'}),
+  T('jcpl-dr','JCPL — request DR#','uti',20,'bldg-permit',{k:'call',l:30}),
+  T('builders-risk','Builders risk insurance','adm',2,'bldg-permit',{k:'admin'}),
+  T('lot-corners','Lot corners pinned','eng',3,'bldg-permit'),
+  T('clear-lot','Clear lot','exc',2,'lot-corners'),
+  T('stakeout','Foundation stake-out','eng',2,'clear-lot'),
+  T('cut-sheet','Cut sheet to site','eng',2,'stakeout'),
+  T('toilet','Order portable toilet','adm',1,'clear-lot',{k:'order',l:3})]],
+ ['Phase 3 · Construction',[
+  T('found-dig','Foundation & porch dig','exc',4,'cut-sheet,toilet'),
+  T('fwin-order','Measure & order foundation windows','con',5,'found-dig',{k:'order',l:10}),
+  T('drywell','Drywell set','exc',2,'found-dig'),
+  T('footings-dug','Footings dug','con',3,'found-dig'),
+  T('i-footing','Footing inspection','mun',1,'footings-dug',{g:3,k:'insp'}),
+  T('footings-pour','Footings poured','con',1,'i-footing',{l:0}),
+  T('pin-footings','Pin footings','con',1,'footings-pour',{l:0}),
+  T('walls-form','Walls formed','con',3,'pin-footings',{l:0}),
+  T('i-openform','Open form inspection','mun',1,'walls-form',{g:3,k:'insp'}),
+  T('walls-pour','Walls poured','con',1,'i-openform',{l:0}),
+  T('fwin-install','Install foundation windows','con',1,'walls-pour,fwin-order',{l:0}),
+  T('i-slab','Slab inspection','mun',1,'walls-pour',{g:3,k:'insp'}),
+  T('found-survey','Foundation location survey','eng',10,'walls-pour'),
+  T('submit-loc','Submit location survey to zoning & engineering','adm',3,'found-survey',{k:'admin'}),
+  T('i-found','Foundation inspection','mun',1,'submit-loc',{g:3,k:'insp'}),
+  T('lumber-list','Reach out to framer / get lumber list','fra',7,'i-found',{k:'call'}),
+  T('deck-lumber','Order open-deck lumber','fra',2,'lumber-list',{k:'order',l:10}),
+  T('i-backfill','Backfill inspection','mun',1,'i-found',{g:3,k:'insp'}),
+  T('backfill','Backfill foundation','exc',3,'i-backfill'),
+  T('pour-slab','Pour slab','con',2,'backfill'),
+  T('deck-frame','Framing — open deck','fra',5,'pour-slab,deck-lumber'),
+  T('njng','NJ Natural Gas — initiate service','uti',45,'deck-frame',{k:'call',l:5}),
+  T('win-order','Window & door order + delivery','trm',30,'deck-frame',{k:'order',l:30}),
+  T('call-deck-insp','Book open-deck inspection','adm',1,'deck-frame',{k:'call'}),
+  T('i-opendeck','Open deck inspection','mun',1,'call-deck-insp',{g:3,k:'insp'}),
+  T('frame-lumber','Order framing lumber','fra',2,'i-opendeck',{k:'order',l:10}),
+  T('framing','Framing','fra',12,'i-opendeck,frame-lumber'),
+  T('dumpster','Order dumpster for site','adm',1,'framing',{k:'order',l:2}),
+  T('sheathing','Sheathing','fra',4,'framing',{l:0}),
+  T('roof-vents','Schedule Artur for roof vent install','plu',1,'sheathing',{k:'call',l:3}),
+  T('call-sheath-insp','Book sheathing inspection','adm',1,'sheathing',{k:'call'}),
+  T('i-sheathing','Sheathing inspection','mun',1,'call-sheath-insp',{g:3,k:'insp'}),
+  T('roofing','Roofing installation','rof',3,'i-sheathing,roof-vents',{l:10}),
+  T('porch-pour','Porch pour / check backfill','con',2,'i-sheathing'),
+  T('siding','Siding installation','sid',14,'roofing',{l:10}),
+  T('stair-measure','Call for stair measure','str',1,'framing',{k:'call',l:5}),
+  T('stair-deliv','Stair delivery','str',15,'stair-measure',{k:'order'}),
+  T('stair-install','Stair installation','str',2,'stair-deliv'),
+  T('win-install','Window & door installation','fra',3,'i-sheathing,win-order'),
+  T('cab-call','Call cabinet company for kitchen layout','cab',1,'framing',{k:'call',l:5}),
+  T('cab-cad','Kitchen cabinet CAD','cab',5,'cab-call'),
+  T('cad-out','Send CAD to trades / on-site meeting','adm',1,'cab-cad',{k:'admin'}),
+  T('plu-rough','Plumbing roughs','plu',6,'win-install,cad-out'),
+  T('hva-rough','HVAC roughs','hva',6,'win-install,cad-out'),
+  T('ele-rough','Electric roughs','ele',5,'hva-rough,cad-out'),
+  T('trim-measure','Call for interior door & trim measure','trm',1,'ele-rough',{k:'call',l:5}),
+  T('book-ele-insp','Book electric rough inspection (DR# on panel)','adm',1,'ele-rough',{k:'call'}),
+  T('book-plu-insp','Book plumbing rough inspection','adm',1,'plu-rough',{k:'call'}),
+  T('book-hva-insp','Book HVAC rough inspection','adm',1,'hva-rough',{k:'call'}),
+  T('book-frm-insp','Book framing inspection','adm',1,'ele-rough',{k:'call'}),
+  T('i-ele-rough','Electric rough inspection','mun',1,'book-ele-insp',{g:3,k:'insp'}),
+  T('i-plu-rough','Plumbing rough inspection','mun',1,'book-plu-insp',{g:3,k:'insp'}),
+  T('i-hva-rough','HVAC rough inspection','mun',1,'book-hva-insp',{g:3,k:'insp'}),
+  T('insul-call','Contact insulation company','isl',1,'ele-rough',{k:'call'}),
+  T('i-framing','Framing inspection','mun',1,'i-ele-rough,i-plu-rough,i-hva-rough,book-frm-insp',{g:3,k:'insp'}),
+  T('firestop','Firestop home','isl',1,'i-framing'),
+  T('i-fire','Fire inspection','mun',1,'firestop',{g:3,k:'insp'}),
+  T('insulate','Insulate home','isl',3,'i-fire,insul-call'),
+  T('res-check','Put ResChecks at home','adm',1,'insulate',{k:'admin'}),
+  T('book-insul-insp','Book insulation inspection','adm',1,'insulate',{k:'call'}),
+  T('i-insulation','Insulation inspection','mun',1,'book-insul-insp,res-check',{g:3,k:'insp'}),
+  T('sheetrock','Sheetrock installation','dry',7,'i-insulation',{l:10}),
+  T('first-clean','First cleaning','pnt',1,'sheetrock'),
+  T('porch-stone','Porch stone installation','con',2,'siding'),
+  T('prime','Painter — first coat prime','pnt',3,'first-clean',{l:7}),
+  T('trim-deliv','Schedule trim & door delivery','trm',1,'sheetrock',{k:'order',l:14}),
+  T('cab-deliv','Schedule cabinet delivery','cab',1,'sheetrock',{k:'order',l:10}),
+  T('tile-measure','Tile measurements','til',1,'sheetrock'),
+  T('tile-bath-order','Order bathroom tile','til',1,'tile-measure',{k:'order',l:14}),
+  T('tile-bsplash-order','Order kitchen backsplash tile','til',1,'tile-measure',{k:'order',l:14}),
+  T('light-order','Order light fixtures','ele',1,'sheetrock',{k:'order',l:14}),
+  T('plumb-fix-order','Order plumbing fixtures','plu',1,'sheetrock',{k:'order',l:14}),
+  T('bath-tile','Bathroom tile install','til',3,'prime,tile-bath-order'),
+  T('door-trim','Door & trim installation','trm',3,'prime,trim-deliv'),
+  T('accent-trim','Accent trim (shiplap, board & batten)','trm',3,'door-trim'),
+  T('cabinets','Cabinet installation','cab',2,'door-trim,cab-deliv'),
+  T('spray-trim','Painter — spray doors & trim','pnt',3,'accent-trim,cabinets'),
+  T('counter-template','Countertop template','cab',1,'cabinets',{k:'call',l:5}),
+  T('floors','Floor installation','flr',3,'spray-trim'),
+  T('shoemould','Shoemoulding, knobs & hardware','trm',2,'floors'),
+  T('counters','Countertop installation','cab',1,'counter-template,floors'),
+  T('backsplash','Kitchen backsplash installation','til',2,'counters,tile-bsplash-order'),
+  T('dump-out','Dumpster retrieval','adm',1,'shoemould',{k:'call',l:2}),
+  T('water-sewer','Water / sewer coordination','wsw',5,'siding',{k:'call',l:10}),
+  T('njng-install','NJNG gas line installation','uti',10,'njng,siding'),
+  T('jcpl-connect','JCPL connection','uti',5,'jcpl-dr,siding'),
+  T('septic','Septic work / start-up','wsw',5,'water-sewer',{l:10}),
+  T('railing','Railing installation','str',2,'prime,door-trim',{l:10}),
+  T('final-grade','Final property grade','exc',2,'njng-install,jcpl-connect'),
+  T('gutters','Gutter installation','gut',1,'jcpl-connect'),
+  T('appl-order','Order appliances','adm',1,'sheetrock',{k:'order',l:21}),
+  T('appl-install','Appliance installation','plu',1,'floors,appl-order,counters'),
+  T('shower-doors','Shower doors & closet shelves','til',1,'bath-tile',{k:'order',l:14}),
+  T('ele-final','Electric fixtures — finals','ele',3,'spray-trim,light-order'),
+  T('plu-final','Plumbing fixtures — finals','plu',2,'floors,plumb-fix-order'),
+  T('hva-final','HVAC finish','hva',2,'spray-trim'),
+  T('final-paint','Final coat — paint','pnt',4,'shoemould,railing'),
+  T('stain-stairs','Stain stairs','pnt',2,'final-paint'),
+  T('pic-clean','House clean — picture ready','pnt',1,'final-paint,stain-stairs'),
+  T('deck-footings','Back deck footings','con',2,'siding'),
+  T('deck-material','Order back deck material','fra',1,'deck-footings',{k:'order',l:10}),
+  T('deck-build','Frame back deck','fra',3,'deck-footings,deck-material'),
+  T('sprinklers','In-ground sprinkler installation','lan',2,'final-grade'),
+  T('sod-order','Order sod','lan',1,'final-grade',{k:'order',l:5}),
+  T('sod','Sod installation','lan',2,'sprinklers,sod-order'),
+  T('landscape','Plant required landscaping & mulch','lan',2,'sod'),
+  T('driveway','Driveway','pav',2,'final-grade',{l:10})]],
+ ['Phase 4 · Close-out',[
+  T('i-ele-final','Electric final inspection','mun',1,'ele-final',{g:3,k:'insp'}),
+  T('i-plu-final','Plumbing final inspection','mun',1,'plu-final,appl-install',{g:3,k:'insp'}),
+  T('i-hva-final','HVAC final inspection','mun',1,'hva-final',{g:3,k:'insp'}),
+  T('i-fire-final','Fire final inspection','mun',1,'final-paint',{g:3,k:'insp'}),
+  T('i-ochcd','OCHCD final inspection','mun',1,'septic',{g:5,k:'insp'}),
+  T('i-sewer-prelim','Sewer authority preliminary','mun',1,'water-sewer',{g:5,k:'insp'}),
+  T('i-sewer-final','Sewer authority final — CC4 box & grade','mun',1,'final-grade,i-sewer-prelim',{g:5,k:'insp'}),
+  T('i-water-final','Water final — after meter set','mun',1,'plu-final',{g:5,k:'insp'}),
+  T('final-survey','Final survey','eng',10,'driveway,final-grade'),
+  T('i-bldg-final','Final building inspection','mun',1,'i-ele-final,i-plu-final,i-hva-final,i-fire-final,pic-clean,deck-build,landscape',{g:5,k:'insp'}),
+  T('warranty','Obtain home warranty policy','adm',3,'i-bldg-final',{k:'admin'}),
+  T('final-clean','Final house clean','pnt',1,'i-bldg-final'),
+  T('co','Certificate of occupancy','mun',3,'i-bldg-final,i-ochcd,i-sewer-final,i-water-final,final-survey',{k:'admin'}),
+  T('list','List house for sale','adm',2,'co,final-clean,warranty',{k:'admin'})]]
+];
+
+
+/* Alternate Phase 1 for a teardown — taken from your 36 Regency Way sheet */
+const PH1_DEMO = ['Phase 1 · Demolition',[
+  T('demo-engineer','Contact engineer to begin work','eng',3,'',{k:'call'}),
+  T('demo-survey','Obtain new survey of property','eng',15,'demo-engineer'),
+  T('demo-apps','Submit zoning, electrical and plumbing applications','mun',10,'demo-survey',{k:'admin'}),
+  T('demo-health','County health department review','mun',20,'demo-apps'),
+  T('demo-utils','Utility disconnection letters','uti',15,'demo-apps',{k:'call',l:14}),
+  T('demo-pest','Contact pest control company','adm',5,'demo-apps',{k:'call'}),
+  T('demo-approval','Obtain demolition approval from township','mun',15,'demo-health,demo-utils,demo-pest'),
+  T('demo-clear','Demolish and clear','exc',5,'demo-approval',{l:10})]];
+
+/* Build a fresh task list. Any dependency that doesn't exist in this
+   template (because Phase 1 was swapped out) re-points at the last
+   Phase 1 task, so the chain never dangles. */
+const TEMPLATES = {standard:'Standard new build', demo:'Demolition, then rebuild'};
+let PHASES_MASTER = {standard: PHASES_STD, demo: [PH1_DEMO, ...PHASES_STD.slice(1)]};
+function tpl(kind){
+  const src = PHASES_MASTER[kind]||PHASES_MASTER.standard;
+  const all=[]; src.forEach(([ph,list])=>list.forEach(t=>all.push({...t,ph,deps:[...t.deps]})));
+  const ids=new Set(all.map(t=>t.id)), anchor=src[0][1][src[0][1].length-1].id;
+  all.forEach(t=>{t.deps=[...new Set(t.deps.map(d=>ids.has(d)?d:anchor))].filter(d=>d!==t.id)});
+  all.forEach((t,i)=>t.i=i);
+  return all;
+}
+
+/* =====================================================================
+   2. JOBS + PER-JOB TASK LISTS + STATUS
+   ===================================================================== */
+let JOBS = [
+ {id:'mermaid',name:'1145 Mermaid Ave',town:'Beachwood',bl:'B 9.30 / L 3',start:'2025-09-01',target:'2026-03-01',kind:'standard',
+  closed:true, through:'list', wip:{}, fail:{}},
+ {id:'fifth',name:'1924 Fifth Ave',town:'Manchester',bl:'B 1.94 / L 18.01',start:'2025-10-01',target:'2026-04-01',kind:'standard',
+  through:'spray-trim',
+  wip:{'floors':{on:'2026-07-29',note:'Lexi installing 7/29'},'shoemould':{on:'2026-07-31',note:'Marek 7/31–8/3'},
+       'septic':{note:'Called for start-up'},'appl-order':{},'sod-order':{},'backsplash':{},'shower-doors':{},
+       'deck-build':{},'driveway':{}}},
+ {id:'sixth',name:'1816 Sixth Ave',town:'Manchester',bl:'—',start:'2025-10-01',target:'2026-04-01',kind:'standard',
+  through:'final-paint',wip:{'sod-order':{},'shower-doors':{},'deck-build':{},'driveway':{}}},
+ {id:'commonwealth',name:'1433 Commonwealth Blvd',town:'Manchester',bl:'—',start:'2026-04-15',target:'2027-02-15',kind:'standard',
+  through:'pour-slab',wip:{'deck-frame':{note:'Wilson on site'},'fwin-install':{},'submit-loc':{}}},
+ {id:'regency',name:'36 Regency Way',town:'Monmouth Cty',bl:'—',start:'2026-08-15',target:'2027-08-15',kind:'demo',
+  through:null,wip:{}}
+];
+const LIST={}, STATE={};
+function instantiate(j){
+  LIST[j.id]=tpl(j.kind);
+  const m={}, cut=j.through? LIST[j.id].findIndex(t=>t.id===j.through) : -1;
+  LIST[j.id].forEach(t=>{
+    let s = (cut>=0 && t.i<=cut) ? 'done':'todo';
+    if(j.wip&&j.wip[t.id]) s='wip';
+    if(j.fail&&j.fail[t.id]) s='fail';
+    const info=(j.wip&&j.wip[t.id])||null;
+    m[t.id]={s,on:(info&&info.on)||null,note:(info&&info.note)||(j.fail&&j.fail[t.id])||'',who:'',lead:null};
+  });
+  STATE[j.id]=m;
+}
+JOBS.forEach(instantiate);
+
+const byId=(jid)=>Object.fromEntries(LIST[jid].map(t=>[t.id,t]));
+function succOf(jid){const s={};LIST[jid].forEach(t=>t.deps.forEach(d=>(s[d]=s[d]||[]).push(t.id)));return s}
+const leadOf=(t,rec)=> rec&&rec.lead!=null ? rec.lead : (t.l!=null?t.l:(NO_LEAD.includes(t.tr)?0:LEAD_DEFAULT));
+/* Task length. Whatever you set on a task wins. Otherwise the estimate from
+   your sheet is raised to the default floor — inspections are left alone
+   unless you tick the box, since their real elapsed time is township queue. */
+const baseDur=(t,rec)=> (rec&&rec.dur!=null) ? rec.dur
+  : ((t.k==='insp'&&!SETTINGS.minDurInsp) ? t.d : Math.max(t.d, SETTINGS.minDur));
+
+const whoOf=(job,t,rec)=> (rec&&rec.who) || (job.crew&&job.crew[t.tr]) || CREW[t.tr] || TRADE[t.tr][0];
+const TRADES_SUB = Object.keys(TRADE).filter(k=>!NO_LEAD.includes(k));
+let UID=1;
+
+/* =====================================================================
+   3. ENGINE
+   ===================================================================== */
+const D=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
+const iso=d=>d.toISOString().slice(0,10);
+const wd=(d,n)=>{const x=new Date(d);let k=Math.abs(n),s=n<0?-1:1;
+  while(k>0){x.setDate(x.getDate()+s);const g=x.getDay();if(g&&g!==6)k--}
+  while(x.getDay()===0||x.getDay()===6)x.setDate(x.getDate()+(n<0?-1:1));return x};
+const cal=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const cdiff=(a,b)=>Math.round((b-a)/864e5);
+const wdiff=(a,b)=>{let n=0,x=new Date(a);const s=b>a?1:-1;
+  while(x.toDateString()!==b.toDateString()){x.setDate(x.getDate()+s);const g=x.getDay();if(g&&g!==6)n+=s}return n};
+const fmt=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+const fmtL=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
+
+function paceOf(job,list,M){
+  if(!SETTINGS.pace) return 1;
+  const start=D(job.start), target=D(job.target);
+  if(TODAY<=start) return 1;
+  const base=Math.max(1,wdiff(start,target)), elapsed=Math.max(0,wdiff(start,TODAY));
+  const expect=Math.min(1.25,elapsed/base); // past the target date a job keeps losing ground, but cap it so a nearly-finished job isn't punished
+  let tot=0,dn=0;
+  list.forEach(t=>{const d=Math.max(1,baseDur(t,M[t.id]));tot+=d;
+    if(['done','na'].includes(M[t.id].s))dn+=d});
+  const actual=tot?dn/tot:0;
+  if(actual<=0.001) return expect>0.05?2.5:1;
+  return Math.min(2.5,Math.max(0.6,expect/actual));
+}
+function build(job){
+  const list=LIST[job.id], M=STATE[job.id], B=byId(job.id), SU=succOf(job.id), st={}, mob=D(job.start);
+  const pace=paceOf(job,list,M);
+  const dur=(t,rec)=>Math.max(1,Math.round(baseDur(t,rec)*pace));
+  list.forEach(t=>{
+    const rec=M[t.id]||(M[t.id]={s:'todo',on:null,note:'',who:'',lead:null});
+    const r={t,rec,s:rec.s,lead:leadOf(t,rec)};
+    r.dur=dur(t,rec);
+    if(r.s==='done'||r.s==='na'){r.es=wd(TODAY,-1);r.ef=r.es;st[t.id]=r;return}
+    let es=TODAY>mob?TODAY:mob;
+    t.deps.forEach(dp=>{const p=st[dp];if(!p)return;
+      const f=wd(wd(p.ef,p.t.g?p.t.g:0),1); if(f>es)es=f});
+    if(rec.on){const o=D(rec.on); if(o>es)es=o}
+    else if(r.s==='wip'&&es<TODAY) es=TODAY;
+    r.es=es; r.ef=wd(es,Math.max(0,r.dur-1)); st[t.id]=r;
+  });
+  const endT = st['co']||st[list[list.length-1].id];
+  const end=endT.ef;
+  list.slice().reverse().forEach(t=>{
+    const r=st[t.id], sc=SU[t.id]||[];
+    r.lf = sc.length ? sc.reduce((m,s)=>{const c=wd(wd(st[s].lf,-(Math.max(0,st[s].dur-1))),-(1+(t.g||0)));return c<m?c:m},new Date(864e13)) : end;
+    r.ls = wd(r.lf,-(Math.max(0,r.dur-1)));
+    const settled=r.s==='done'||r.s==='na';
+    r.slack=settled?99:wdiff(r.es,r.ls);
+    r.crit=!settled&&r.slack<=0;
+  });
+  const doneN=list.filter(t=>['done','na'].includes(st[t.id].s)).length;
+  let tot=0,dn=0;
+  list.forEach(t=>{const d=Math.max(1,baseDur(t,M[t.id]));tot+=d;if(['done','na'].includes(st[t.id].s))dn+=d});
+  return {job,list,st,succ:SU,co:end,pace,pct:Math.round(tot?dn/tot*100:0),
+          countPct:Math.round(doneN/list.length*100),
+          slip:wdiff(end,D(job.target)),mobilized:doneN>0||TODAY>=mob};
+}
+
+function actions(P){
+  const {job,st,list,succ}=P,out=[];
+  if(job.closed) return out;
+  const add=o=>out.push({job,...o});
+  const ready=t=>t.deps.every(d=>!st[d]||['done','na'].includes(st[d].s));
+  list.forEach(t=>{
+    const r=st[t.id]; if(r.s==='done'||r.s==='na') return;
+    if(r.s==='fail'){add({p:1,tag:'RE-INSPECT',act:t.n,tid:t.id,crit:r.crit,
+      why:`Recorded as <b>Fail</b> and never re-booked. Everything downstream stays open — including the CO.`});return}
+    if(t.k==='insp'&&r.s!=='wip'&&ready(t)){add({p:2,tag:'BOOK',act:t.n,tid:t.id,crit:r.crit,
+      why:`Predecessors are signed off. Township turnaround runs about ${t.g} working days and ${(succ[t.id]||[]).length} task(s) sit behind it.`});return}
+    if(t.k==='insp'&&r.s==='wip'&&/Scheduled/i.test(r.rec.note||'')){add({p:1,tag:'CHASE',act:t.n,tid:t.id,crit:r.crit,
+      why:`${r.rec.note}. No result recorded since. Call the office.`});return}
+    if(r.lead>0&&r.s==='todo'){
+      const by=cal(r.es,-r.lead), days=cdiff(TODAY,by);
+      if(days<=3){const late=days<0;
+        add({p:late?1:2,tag:t.k==='order'?'ORDER':'CALL',act:t.n,tid:t.id,crit:r.crit,
+          why: late? `Needs ${r.lead} days notice, so this should have gone out <b>${Math.abs(days)} day(s) ago</b>. Start slides to ${fmt(r.es)} and everything behind it moves with it.`
+                   : `Work starts about <b>${fmt(r.es)}</b>. ${(CREW[t.tr]||'They')} need ${r.lead} days notice — the call goes out by ${fmt(by)}.`});
+      } return}
+    if(r.s==='todo'&&ready(t)&&r.crit&&(t.k==='admin'||t.k==='call'||t.tr==='adm')){
+      add({p:2,tag:'DO',act:t.n,tid:t.id,crit:true,
+        why:`Nothing is blocking this and it sits on the critical path. Every day it waits is a day on the CO date.`});return}
+    if(r.s==='wip'&&r.crit&&!r.rec.on){add({p:3,tag:'PUSH',act:t.n,tid:t.id,crit:true,
+      why:`Open with no committed date, and on the critical path. The schedule can't move until ${(CREW[t.tr]||'the trade')} gives you one.`});return}
+    if(r.s==='todo'&&ready(t)&&cdiff(TODAY,r.es)<=1&&!r.lead&&!['mun','adm'].includes(t.tr)){
+      add({p:3,tag:'RELEASE',act:t.n,tid:t.id,crit:r.crit,
+        why:`Predecessors cleared as of ${fmt(r.es)} and nobody is scheduled on it.`})}
+  });
+  return out;
+}
+
+let PLAN=[],ALL=[];
+function recompute(){
+  PLAN=JOBS.map(build);
+  ALL=PLAN.flatMap(actions).sort((a,b)=>a.p-b.p||(b.crit-a.crit));
+  const n=ALL.filter(a=>a.p<=2).length;
+  document.getElementById('hdrActs').textContent=n;
+  document.getElementById('hdrJobs').textContent=PLAN.filter(p=>!p.job.closed).length+' open';
+  document.querySelector('nav button[data-v="today"]').innerHTML='Today <span class="count">'+n+'</span>';
+}
+function clashes(){
+  const by={};
+  PLAN.forEach(P=>{ if(P.job.closed) return; P.list.forEach(t=>{const r=P.st[t.id];
+    if(['done','na'].includes(r.s)||['mun','adm'].includes(t.tr))return;
+    if(wdiff(TODAY,r.es)>42)return;
+    (by[t.tr]=by[t.tr]||[]).push({job:P.job,t,r})})});
+  return Object.entries(by).map(([tr,rows])=>{rows.sort((a,b)=>a.r.es-b.r.es);
+    return {tr,rows,multi:new Set(rows.map(r=>r.job.id)).size}})
+    .sort((a,b)=>b.multi-a.multi||a.rows[0].r.es-b.rows[0].r.es);
+}
+
+/* =====================================================================
+   4. VIEWS  — Lightning Design System
+   ===================================================================== */
+let sel=null, jobTab=null, filter='open', query='', view='today';
+const el=h=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild};
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dot=tr=>`<span class="dot" style="background:${(TRADE[tr]||TRADE.adm)[1]}"></span>`;
+const SLABEL={todo:'Not Started',wip:'In Progress',done:'Complete',na:'Not Applicable',fail:'Failed'};
+
+const GLYPH={
+  warning:'M12 2 1 21h22zm0 6 6.9 11.5H5.1zM11 10h2v5h-2zm0 6h2v2h-2z',
+  clock:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 10.6V6h-2v7.4l5 3 1-1.7z',
+  phone:'M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.2.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1z',
+  cart:'M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM6.2 6h14.6l-2.3 8H8.5L6.2 6zM2 2h3l.8 3H22l-3 10H7L4.4 4H2z',
+  cal:'M7 2v2H4v18h16V4h-3V2h-2v2H9V2zm-1 8h12v10H6zm2 2v2h2v-2z',
+  check:'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z',
+  arrow:'M8 5v14l11-7z',
+  home:'M12 3 2 11h3v9h6v-6h2v6h6v-9h3z'
+};
+const TAGICON={'RE-INSPECT':'warning','CHASE':'warning','BOOK':'cal','CALL':'phone','ORDER':'cart','DO':'check','PUSH':'clock','RELEASE':'arrow'};
+const PCOLOR={1:'var(--error)',2:'var(--warning)',3:'var(--brand)'};
+const tile=(g,c,cls='')=>`<span class="tile ${cls}" style="background:${c}"><svg viewBox="0 0 24 24"><path d="${GLYPH[g]||GLYPH.check}"/></svg></span>`;
+
+function paceLabel(P){
+  if(P.job.closed) return '';
+  if(!SETTINGS.pace||!P.mobilized) return '';
+  const p=P.pace;
+  if(p>1.08) return `Running ${p.toFixed(2)}\u00d7 slower than planned`;
+  if(p<0.93) return `Running ${(1/p).toFixed(2)}\u00d7 faster than planned`;
+  return 'On pace';
+}
+const paceBadge=P=>{const l=paceLabel(P);if(!l)return'';
+  const c=P.pace>1.08?'error':P.pace<0.93?'success':'';
+  return `<span class="badge ${c}">${l}</span>`};
+
+function rail(){
+  const open=PLAN.filter(P=>!P.job.closed), closed=PLAN.filter(P=>P.job.closed);
+  const row=P=>{const over=P.slip<0, a=ALL.filter(x=>x.job.id===P.job.id)[0];
+    return `<div class="jrow ${sel===P.job.id?'on':''} ${P.job.closed?'closed':''}" data-j="${P.job.id}">
+      <div style="display:flex;gap:8px;align-items:baseline">
+        <span class="n" style="flex:1">${esc(P.job.name)}</span>
+        ${P.job.closed?'<span class="badge success">Closed</span>':''}</div>
+      <div class="m">${esc(P.job.town)} · ${P.job.closed?'Complete':(P.mobilized?P.pct+'% complete':'Not mobilized')}</div>
+      <div class="prog ${P.job.closed?'done':''}"><i style="width:${P.job.closed?100:P.pct}%"></i></div>
+      ${P.job.closed?`<div class="m">Certificate of occupancy issued</div>`
+        :`<div class="m" style="color:${over?'var(--error-text)':'var(--success-text)'}">
+           CO ${fmtL(P.co)} · ${over?Math.abs(P.slip)+' days past target':P.slip+' days of float'}</div>
+          ${paceLabel(P)?`<div style="margin-top:5px">${paceBadge(P)}</div>`:''}
+          ${a?`<div class="m" style="margin-top:5px">Next: <b style="color:var(--text-2)">${esc(a.act)}</b></div>`:''}`}
+    </div>`};
+  return `<div class="card">
+    <div class="card-h">${tile('home','var(--brand)','sm')}<div class="t">Jobs <small>${open.length} open</small></div></div>
+    <div class="card-b">${open.map(row).join('')}</div>
+    ${closed.length?`<div class="card-h" style="border-top:1px solid var(--border)"><div class="t" style="font-size:12px;color:var(--text-3)">CLOSED</div></div>
+      <div class="card-b">${closed.map(row).join('')}</div>`:''}
+    <div class="card-f"><button class="btn" id="newJob2">New Job</button></div></div>`;
+}
+
+function item(a){
+  const P=PLAN.find(p=>p.job.id===a.job.id), r=P.st[a.tid], t=r.t;
+  const bc=a.p===1?'error':a.p===2?'warning':'info';
+  return `<button class="item p${a.p}" data-edit="${a.job.id}|${a.tid}">
+    ${tile(TAGICON[a.tag]||'check',PCOLOR[a.p])}
+    <div class="body">
+      <div class="ttl">${esc(a.act)}</div>
+      <div class="meta">${dot(t.tr)}${esc(whoOf(P.job,t,r.rec))} · ${esc(P.job.name)} · ${fmt(r.es)}&ndash;${fmt(r.ef)}</div>
+      <div class="why">${a.why}</div>
+    </div>
+    <div class="right"><span class="badge ${bc}">${a.tag}</span>
+      ${a.crit?'<span class="badge inverse">Critical path</span>':''}</div></button>`;
+}
+
+function vToday(){
+  const list=sel?ALL.filter(a=>a.job.id===sel):ALL;
+  const g=[[1,'Already Late','Should have gone out before today','warning'],
+           [2,'Today','Notice runs out inside three days, or a gate is ready to book','clock'],
+           [3,'Keep Moving','Clear to start, nobody assigned to it','arrow']];
+  const body=g.map(([p,h,s,ic])=>{const rows=list.filter(a=>a.p===p);if(!rows.length)return'';
+    return `<div class="card"><div class="card-h">${tile(ic,PCOLOR[p],'sm')}
+      <div class="t">${h} <small>· ${s}</small></div><span class="badge ${p===1?'error':p===2?'warning':'info'}">${rows.length}</span></div>
+      <div class="card-b">${rows.map(item).join('')}</div></div>`}).join('');
+  return `<div class="grid"><div>${rail()}
+    ${sel?`<div style="margin-bottom:12px"><button class="btn" id="clr">Show all jobs</button></div>`:''}</div>
+    <div>${body||`<div class="card"><div class="empty"><div class="t">Nothing waiting on you</div>
+      Every open task has a contractor on it and a date that hasn't come due.</div></div>`}</div></div>`;
+}
+
+function pathBar(P){
+  const phases=[...new Set(P.list.map(t=>t.ph))];
+  const firstOpen=P.list.find(t=>!['done','na'].includes(P.st[t.id].s));
+  return `<div class="path">${phases.map(ph=>{
+    const tasks=P.list.filter(t=>t.ph===ph);
+    const done=tasks.filter(t=>['done','na'].includes(P.st[t.id].s)).length;
+    const now=!P.job.closed&&firstOpen&&firstOpen.ph===ph;
+    const cls=done===tasks.length?'done':now?'now':'';
+    return `<div class="pstep ${cls}">${esc(ph.replace(/^Phase \d+ · /,''))}
+      <span class="c">${done} of ${tasks.length} complete</span></div>`}).join('')}</div>`;
+}
+
+function vJobs(){
+  if(!PLAN.find(p=>p.job.id===jobTab)) jobTab=PLAN[0].job.id;
+  const P=PLAN.find(p=>p.job.id===jobTab);
+  const q=query.trim().toLowerCase();
+  const keep=r=>{
+    if(filter==='open') return !['done','na'].includes(r.s);
+    if(filter==='done') return r.s==='done';
+    if(filter==='na')   return r.s==='na';
+    return true;
+  };
+  const shown=P.list.filter(t=>keep(P.st[t.id])&&(!q||t.n.toLowerCase().includes(q)||
+    whoOf(P.job,t,P.st[t.id].rec).toLowerCase().includes(q)));
+  const nOpen=P.list.filter(t=>!['done','na'].includes(P.st[t.id].s)).length;
+  const nDone=P.list.filter(t=>P.st[t.id].s==='done').length;
+  const nNa=P.list.filter(t=>P.st[t.id].s==='na').length;
+  let rows='',phase='';
+  shown.forEach(t=>{
+    const r=P.st[t.id], open=!['done','na'].includes(r.s);
+    if(t.ph!==phase){phase=t.ph;rows+=`<tr class="grp"><td colspan="5">
+      <span>${esc(phase)}</span>
+      <button class="btn" data-addph="${esc(phase)}" style="float:right;font-weight:400;text-transform:none;letter-spacing:0;padding:0 9px">Add task to this phase</button></td></tr>`}
+    const bc={fail:'error',wip:'warning',done:'success',na:'',todo:''}[r.s];
+    rows+=`<tr class="row" data-edit="${P.job.id}|${t.id}">
+      <td class="n">${t.k==='insp'?'▸ ':''}${esc(t.n)}
+        ${t.custom?'<span class="badge info" style="margin-left:6px">Added</span>':''}
+        ${r.rec.note?`<div style="font-size:11.5px;color:var(--text-3);font-weight:400">${esc(r.rec.note)}</div>`:''}</td>
+      <td><span class="badge ${bc}">${SLABEL[r.s]}</span></td>
+      <td>${dot(t.tr)}${esc(whoOf(P.job,t,r.rec))}</td>
+      <td class="num">${open?fmt(r.es)+' – '+fmt(r.ef):(r.rec.on?fmtL(D(r.rec.on)):'—')}</td>
+      <td class="num" style="${r.crit?'color:var(--error-text);font-weight:600':''}">${!open?'—':r.crit?'Critical':r.slack+'d float'}</td></tr>`;
+  });
+  const over=P.slip<0;
+  return `<div class="card">
+    <div class="card-h">${tile('home',P.job.closed?'var(--success)':'var(--brand)','sm')}
+      <div class="t">${esc(P.job.name)} <small>· ${esc(P.job.town)} · ${esc(P.job.bl)}</small></div>
+      ${P.job.closed?'<span class="badge success">Closed</span>':paceBadge(P)}</div>
+    <div style="padding:10px 14px;display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--divider)">
+      ${PLAN.map(p=>`<button class="btn ${p.job.id===jobTab?'on':''}" data-jt="${p.job.id}">${esc(p.job.name)}</button>`).join('')}
+      <button class="btn" id="newJob">New Job</button></div>
+    ${pathBar(P)}
+    <div class="ph-fields" style="padding:0 14px 12px;margin:0;border-top:0">
+      <div class="ph-f"><div class="k">Sequence</div><div class="v" style="font-size:13px">${esc(TEMPLATES[P.job.kind]||'')}</div></div>
+      <div class="ph-f"><div class="k">Started</div><div class="v" style="font-size:13px">${fmtL(D(P.job.start))}</div></div>
+      <div class="ph-f"><div class="k">Target CO</div><div class="v" style="font-size:13px">${fmtL(D(P.job.target))}</div></div>
+      <div class="ph-f"><div class="k">Projected CO</div>
+        <div class="v" style="font-size:13px;color:${P.job.closed?'var(--success-text)':over?'var(--error-text)':'var(--success-text)'}">
+        ${P.job.closed?'Issued':fmtL(P.co)}</div></div>
+      <div class="ph-f"><div class="k">Complete</div><div class="v" style="font-size:13px">${P.job.closed?100:P.pct}%</div></div></div>
+    <div style="padding:9px 14px;display:flex;gap:7px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--divider);border-bottom:1px solid var(--border)">
+      <button class="btn ${filter==='open'?'on':''}" data-f="open">Open (${nOpen})</button>
+      <button class="btn ${filter==='done'?'on':''}" data-f="done">Complete (${nDone})</button>
+      ${nNa?`<button class="btn ${filter==='na'?'on':''}" data-f="na">Not applicable (${nNa})</button>`:''}
+      <button class="btn ${filter==='all'?'on':''}" data-f="all">All (${P.list.length})</button>
+      <input id="jq" placeholder="Find a task or contractor" value="${esc(query)}" style="width:220px">
+      <span class="sp" style="flex:1"></span>
+      <button class="btn" id="newTask">Add Task</button>
+      <button class="btn" id="editJob">Edit Job &amp; Crew</button></div>
+    <div style="padding:7px 14px;font-size:11.5px;color:var(--text-3);border-bottom:1px solid var(--divider)">
+      Showing ${shown.length} of ${P.list.length} tasks${q?` matching &ldquo;${esc(query)}&rdquo;`:''}${filter==='open'&&!q?` · ${nDone+nNa} completed or not applicable are hidden`:''}. Select a row to update it.</div>
+    <div class="tblwrap"><table><thead><tr><th>Task</th><th>Status</th><th>Assigned To</th><th>Scheduled</th><th>Float</th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="5"><div class="empty"><div class="t">Nothing matches this filter</div>
+        Try All (${P.list.length}) or clear the search.</div></td></tr>`}</tbody></table></div></div>`;
+}
+
+function vTrades(){
+  const cl=clashes();
+  return `<div class="card"><div class="card-h">${tile('phone','var(--brand)','sm')}
+      <div class="t">One Call, Several Jobs <small>· next 6 weeks</small></div></div>
+    <div style="padding:11px 14px;font-size:12.5px;color:var(--text-2);border-bottom:1px solid var(--divider)">
+      Every trade with work scheduled in the next six weeks, across all open jobs. Where a contractor appears on more than one address, that's a single phone call covering both — and a conflict if the windows overlap.</div>
+    ${cl.length?cl.map(c=>`
+      <div class="card-h" style="border-top:1px solid var(--border);background:#FAFAF9">
+        <span class="dot" style="width:11px;height:11px;background:${TRADE[c.tr][1]}"></span>
+        <div class="t" style="font-size:13.5px">${esc(CREW[c.tr]||TRADE[c.tr][0])}</div>
+        <span class="badge ${c.multi>1?'info':''}">${c.multi} job${c.multi>1?'s':''}</span>
+        <span class="badge">${c.rows.length} task${c.rows.length>1?'s':''}</span></div>
+      <div class="tblwrap"><table><tbody>${c.rows.map(({job,t,r})=>`
+        <tr class="row" data-edit="${job.id}|${t.id}"><td style="width:32%">${esc(job.name)}</td>
+        <td class="n">${esc(t.n)}</td><td class="num">${fmt(r.es)} – ${fmt(r.ef)}</td>
+        <td class="num">${r.lead?r.lead+'d notice':''}</td></tr>`).join('')}</tbody></table></div>`).join('')
+      :`<div class="empty"><div class="t">No trade work scheduled in the next six weeks</div>Nothing is queued on the open jobs.</div>`}</div>`;
+}
+
+function vLook(){
+  const weeks=[];let w=new Date(TODAY);w.setDate(w.getDate()-((w.getDay()+6)%7));
+  for(let i=0;i<6;i++){const s=new Date(w);s.setDate(s.getDate()+i*7);const e=new Date(s);e.setDate(e.getDate()+6);weeks.push([s,e])}
+  const rows=PLAN.filter(P=>!P.job.closed);
+  return `<div class="card la"><div class="card-h">${tile('cal','var(--brand)','sm')}<div class="t">6-Week Look-Ahead</div></div>
+  <div class="tblwrap"><table><thead><tr><th>Job</th>
+    ${weeks.map(([s],i)=>`<th class="${i===0?'wknow':''}">Wk of ${fmt(s)}</th>`).join('')}</tr></thead><tbody>
+  ${rows.map(P=>`<tr><td><b>${esc(P.job.name)}</b><div style="font-size:11.5px;color:var(--text-3)">${esc(P.job.town)}</div></td>
+    ${weeks.map(([s,e],i)=>{const items=P.list.map(t=>({t,r:P.st[t.id]}))
+      .filter(x=>!['done','na'].includes(x.r.s)&&x.r.es>=s&&x.r.es<=e);
+      return `<td class="${i===0?'wknow':''}">${items.map(({t})=>
+        `<span class="blk" style="border-color:${TRADE[t.tr][1]}">${t.k==='insp'?'▸ ':''}${esc(t.n)}</span>`).join('')}</td>`}).join('')}
+  </tr>`).join('')}</tbody></table></div></div>`;
+}
+/* =====================================================================
+   5. MODALS
+   ===================================================================== */
+function modal(html,setup){
+  const node=el(`<div class="scrim">${html}</div>`);
+  document.body.appendChild(node);
+  const close=()=>{node.remove();document.removeEventListener('keydown',onKey)};
+  const onKey=e=>{if(e.key==='Escape')close()};
+  document.addEventListener('keydown',onKey);
+  node.onclick=e=>{if(e.target===node)close()};
+  node.querySelectorAll('[data-close]').forEach(b=>b.onclick=close);
+  node.querySelectorAll('[data-addsub]').forEach(b=>b.onclick=()=>{
+    if(b.dataset.open==='1')return; b.dataset.open='1';
+    const target=node.querySelector('#'+b.dataset.addsub);
+    const box=el(`<div class="inline-add"><input placeholder="Contractor name, e.g. Nunez Concrete - Luis">
+      <button class="btn brand" style="white-space:nowrap">Add</button></div>`);
+    b.parentNode.appendChild(box);
+    const inp=box.querySelector('input'); inp.focus();
+    const commit=()=>{const v=inp.value.trim(); if(!v){box.remove();b.dataset.open='';return}
+      if(!ROSTER.includes(v)) ROSTER.push(v);
+      node.querySelectorAll('select').forEach(s=>{
+        if(s.multiple) return;
+        if(!/^(crew_|edWho)/.test(s.id)) return;
+        if(![...s.options].some(o=>o.value===v)) s.add(new Option(v,v));
+      });
+      target.value=v; box.remove(); b.dataset.open=''; persist();};
+    box.querySelector('button').onclick=commit;
+    inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();commit()}};
+  });
+  setup(node,close);
+  return node;
+}
+const tradeOpts=v=>Object.entries(TRADE).map(([k,x])=>`<option value="${k}" ${v===k?'selected':''}>${esc(x[0])}</option>`).join('');
+
+/* What did finishing this task unlock, and who needs a phone call about it? */
+function handoff(jobId,tid){
+  const P=PLAN.find(p=>p.job.id===jobId); if(!P) return;
+  const done=P.st[tid]; if(!done) return;
+  const ready=[],blocked=[];
+  (P.succ[tid]||[]).forEach(sid=>{
+    const r=P.st[sid]; if(!r||['done','na'].includes(r.s)) return;
+    const missing=r.t.deps.filter(d=>P.st[d]&&!['done','na'].includes(P.st[d].s));
+    (missing.length?blocked:ready).push({r,missing});
+  });
+  ready.sort((a,b)=>a.r.es-b.r.es);
+  const line=({r})=>{
+    const who=whoOf(P.job,r.t,r.rec);
+    const by=r.lead>0?cal(r.es,-r.lead):null;
+    const late=by&&by<=TODAY;
+    return `<button class="item" data-edit="${jobId}|${r.t.id}" style="border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px">
+      ${tile(r.t.k==='insp'?'cal':r.lead>0?'phone':'arrow', late?'var(--error)':'var(--brand)')}
+      <div class="body">
+        <div class="ttl">${esc(who)}</div>
+        <div class="meta">${dot(r.t.tr)}${esc(TRADE[r.t.tr][0])} · ${esc(r.t.n)}</div>
+        <div class="why" style="border-left-color:${late?'var(--error)':'var(--brand)'}">
+          ${r.t.k==='insp' ? `Ready to book. Township turnaround runs about ${r.t.g} working days.`
+            : r.lead>0 ? `Starts about <b>${fmt(r.es)}</b> and needs ${r.lead} days notice, so ${late?'<b>this call is already due</b>':'call by <b>'+fmt(by)+'</b>'}.`
+            : `Clear to start <b>${fmt(r.es)}</b>. Nobody is scheduled on it.`}</div></div>
+      <div class="right">${late?'<span class="badge error">Call now</span>':'<span class="badge info">Next</span>'}
+        ${r.crit?'<span class="badge inverse">Critical path</span>':''}</div></button>`};
+  modal(`<div class="modal" role="dialog" aria-modal="true" aria-label="What is next">
+    <div class="m-h">${tile('check','var(--success)')}
+      <div><div class="t">${esc(done.t.n)} is complete</div>
+        <div class="s">${esc(P.job.name)} · ${esc(done.t.ph)}</div></div>
+      <button class="m-x" data-close aria-label="Close">&times;</button></div>
+    <div class="m-b">
+      ${ready.length?`<div class="fld"><label>Now move on to ${ready.length===1?'this':'these '+ready.length}, and contact:</label>
+        ${ready.map(line).join('')}</div>`
+        :`<div class="fld"><label>Nothing was released by this</label>
+          <div class="deps">No task was waiting only on ${esc(done.t.n)}.</div></div>`}
+      ${blocked.length?`<div class="fld"><label>Still held up</label><div class="deps">
+        ${blocked.slice(0,5).map(({r,missing})=>`<div>${esc(r.t.n)} — waiting on <b>${missing.map(m=>esc(P.st[m].t.n)).join(', ')}</b></div>`).join('')}</div></div>`:''}
+    </div>
+    <div class="m-f"><span class="sp"></span><button class="btn brand" data-close>Got it</button></div></div>`,
+  (node,close)=>{
+    node.querySelectorAll('[data-edit]').forEach(n=>n.onclick=()=>{
+      const[j,t]=n.dataset.edit.split('|'); close(); editor(j,t)});
+  });
+}
+
+function editor(jobId,tid){
+  const P=PLAN.find(p=>p.job.id===jobId), r=P.st[tid], t=r.t, rec=r.rec;
+  const deps=t.deps.map(d=>{const dr=P.st[d];if(!dr)return'';const ok=['done','na'].includes(dr.s);
+    return `<div>${ok?'<span style="color:var(--success)">✓</span>':'<span class="no">✗</span>'} ${esc(dr.t.n)}${ok?'':' — <b>'+SLABEL[dr.s]+'</b>, finishes '+fmt(dr.ef)}</div>`}).join('')
+    ||'<div>Nothing — this can start any time.</div>';
+  const blocks=(P.succ[tid]||[]).slice(0,6).map(s=>'<div>› '+esc(P.st[s].t.n)+'</div>').join('');
+  modal(`<div class="modal" role="dialog" aria-modal="true" aria-label="Update task">
+    <div class="m-h">${tile(t.k==='insp'?'cal':'check','var(--brand)')}
+      <div><div class="t">${esc(t.n)}</div>
+        <div class="s">${esc(P.job.name)} · ${esc(t.ph)} · ${esc(TRADE[t.tr][0])}</div></div>
+      <button class="m-x" data-close aria-label="Close">&times;</button></div>
+    <div class="m-b">
+      <div class="fld"><label>Status</label><div class="seg" id="segS">
+        ${['todo','wip','done','na'].concat(t.k==='insp'?['fail']:[]).map(s=>
+          `<button data-s="${s}" class="${rec.s===s?'on':''}">${SLABEL[s]}</button>`).join('')}</div></div>
+      <div class="two">
+        <div class="fld"><label>${t.k==='insp'?'Inspection date':'Start / scheduled date'}</label>
+          <input type="date" id="edOn" value="${rec.on||''}">
+          <div class="help">Leave blank and the engine schedules it: ${fmt(r.es)} – ${fmt(r.ef)}.</div></div>
+        <div class="fld"><label>Notice needed (days)</label><input type="number" min="0" max="120" id="edLead" value="${r.lead}">
+          <div class="help">${rec.lead!=null?'Set by you.':(t.l!=null?'From your tracker.':(NO_LEAD.includes(t.tr)?'Not a contractor — no notice needed.':'Default 7 days.'))}</div></div>
+      </div>
+      <div class="fld"><label>How long it takes (working days)</label>
+        <input type="number" min="1" max="200" id="edDur" value="${baseDur(t,rec)}">
+        <div class="help">${rec.dur!=null?'Set by you.':`Default ${SETTINGS.minDur} days.`}
+          ${P.pace!==1&&SETTINGS.pace?` Stretched to <b>${r.dur} days</b> to match this job's pace.`:''}</div></div>
+      <div class="fld"><label>Assigned to</label>
+        <select id="edWho"><option value="">— Crew default for this job (${esc(whoOf(P.job,t,{}))}) —</option>
+          ${ROSTER.map(n=>`<option ${rec.who===n?'selected':''}>${esc(n)}</option>`).join('')}</select>
+        <button class="btn" data-addsub="edWho" style="margin-top:6px">New Contractor</button></div>
+      <div class="fld"><label>Note</label>
+        <textarea id="edNote" rows="2" placeholder="e.g. Artur confirmed Thursday">${esc(rec.note)}</textarea></div>
+      <div class="fld"><label>Waiting on</label><div class="deps">${deps}</div></div>
+      ${blocks?`<div class="fld"><label>Marking this complete releases</label><div class="deps">${blocks}</div></div>`:''}
+      <div class="fld"><label>Position</label><div class="deps">
+        ${r.crit?'<b style="color:var(--error-text)">On the critical path — a day lost here is a day on the CO date.</b>'
+                :r.slack+' days of float before it starts pushing the CO date.'}</div></div>
+    </div>
+    <div class="m-f"><button class="btn" id="edInsert">Insert Task After This</button>
+      ${t.custom?'<button class="btn danger" id="edDel">Delete</button>':''}
+      <span class="sp"></span>
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn" id="edDone">Mark Complete</button>
+      <button class="btn brand" id="edSave">Save</button></div></div>`,
+  (node,close)=>{
+    let cur=rec.s;
+    node.querySelectorAll('#segS button').forEach(b=>b.onclick=()=>{cur=b.dataset.s;
+      node.querySelectorAll('#segS button').forEach(x=>x.classList.toggle('on',x===b))});
+    const commit=status=>{
+      const M=STATE[jobId][tid];
+      const was=M.s;
+      M.s=status||cur; M.on=node.querySelector('#edOn').value||null;
+      const lv=node.querySelector('#edLead').value;
+      M.lead=lv===''?null:Math.max(0,parseInt(lv,10)||0);
+      const dv=node.querySelector('#edDur').value;
+      M.dur=dv===''?null:Math.max(1,parseInt(dv,10)||1);
+      M.who=node.querySelector('#edWho').value; M.note=node.querySelector('#edNote').value;
+      const becameDone = M.s==='done' && was!=='done';
+      close(); recompute(); render(view); persist(jobId);
+      if(becameDone) handoff(jobId,tid);
+    };
+    node.querySelector('#edSave').onclick=()=>commit();
+    node.querySelector('#edDone').onclick=()=>commit('done');
+    node.querySelector('#edInsert').onclick=()=>{close();addTask(jobId,tid)};
+    const dl=node.querySelector('#edDel');
+    if(dl) dl.onclick=()=>{
+      LIST[jobId]=LIST[jobId].filter(x=>x.id!==tid);
+      LIST[jobId].forEach(x=>{x.deps=x.deps.filter(d=>d!==tid)});
+      LIST[jobId].forEach((x,i)=>x.i=i);
+      delete STATE[jobId][tid]; close(); recompute(); render(view); persist(jobId);
+    };
+    node.querySelector('#edOn').focus();
+  });
+}
+
+function addTask(jobId,anchorId,phaseName){
+  const P=PLAN.find(p=>p.job.id===jobId), list=P.list;
+  let anchor;
+  if(phaseName){const inPh=list.filter(t=>t.ph===phaseName); anchor=inPh[inPh.length-1]||list[0]}
+  else anchor=anchorId?list.find(t=>t.id===anchorId):list.find(t=>!['done','na'].includes(P.st[t.id].s))||list[0];
+  const phases=[...new Set(list.map(t=>t.ph))];
+  const opt=(t,ids)=>`<option value="${t.id}" ${ids.includes(t.id)?'selected':''}>${esc(t.n)}</option>`;
+  const heirs=P.succ[anchor.id]||[];
+  modal(`<div class="modal" role="dialog" aria-modal="true" aria-label="Add task">
+    <div class="m-h">${tile('check','var(--brand)')}
+      <div><div class="t">New Task</div><div class="s">${esc(P.job.name)}</div></div>
+      <button class="m-x" data-close aria-label="Close">&times;</button></div>
+    <div class="m-b">
+      <div class="fld"><label><span class="req">*</span>What is it</label>
+        <input id="ntName" placeholder="e.g. Retaining wall at rear grade"></div>
+      <div class="two">
+        <div class="fld"><label>Phase</label><select id="ntPhase">${phases.map(p=>`<option ${p===anchor.ph?'selected':''}>${esc(p)}</option>`).join('')}</select></div>
+        <div class="fld"><label>Trade</label><select id="ntTrade">${tradeOpts(anchor.tr)}</select></div></div>
+      <div class="two">
+        <div class="fld"><label>How long (working days)</label><input type="number" id="ntDur" min="1" max="200" value="7"></div>
+        <div class="fld"><label>Notice needed (days)</label><input type="number" id="ntLead" min="0" max="120" value="7"></div></div>
+      <div class="fld"><label>Kind</label><select id="ntKind">
+        <option value="field">Work on site</option><option value="call">A call to make</option>
+        <option value="order">Something to order</option><option value="insp">Township inspection</option>
+        <option value="admin">Office task</option></select></div>
+      <div class="fld"><label>Starts after — hold ⌘ or Ctrl to pick several</label>
+        <select id="ntAfter" multiple size="6">${list.map(t=>opt(t,[anchor.id])).join('')}</select>
+        <div class="help">The engine won't schedule it until all of these are complete.</div></div>
+      <div class="fld"><label>Must finish before</label>
+        <select id="ntBefore" multiple size="5">${list.map(t=>opt(t,[])).join('')}</select>
+        <div class="help">Leave empty to run it alongside everything else.</div></div>
+      ${heirs.length?`<div class="fld"><label style="display:flex;gap:7px;align-items:flex-start;cursor:pointer">
+        <input type="checkbox" id="ntChain" style="margin-top:2px">
+        <span>Slot it into the chain — the ${heirs.length} task(s) waiting on "${esc(anchor.n)}" will wait on this too</span></label></div>`:''}
+      <div class="fld"><label style="display:flex;gap:7px;align-items:flex-start;cursor:pointer">
+        <input type="checkbox" id="ntTpl" style="margin-top:2px">
+        <span>Also add it to the ${esc(TEMPLATES[P.job.kind])} template, so future jobs get it</span></label></div>
+    </div>
+    <div class="m-f"><span class="sp"></span><button class="btn" data-close>Cancel</button>
+      <button class="btn brand" id="ntSave">Add Task</button></div></div>`,
+  (node,close)=>{
+    node.querySelector('#ntName').focus();
+    node.querySelector('#ntSave').onclick=()=>{
+      const name=node.querySelector('#ntName').value.trim();
+      if(!name){node.querySelector('#ntName').focus();return}
+      const kind=node.querySelector('#ntKind').value;
+      const after=[...node.querySelector('#ntAfter').selectedOptions].map(o=>o.value);
+      const before=[...node.querySelector('#ntBefore').selectedOptions].map(o=>o.value);
+      const id='x'+(UID++)+'-'+Date.now().toString(36);
+      const t={id,n:name,ph:node.querySelector('#ntPhase').value,tr:node.querySelector('#ntTrade').value,
+        d:Math.max(1,parseInt(node.querySelector('#ntDur').value,10)||1),
+        l:Math.max(0,parseInt(node.querySelector('#ntLead').value,10)||0),
+        k:kind==='field'?undefined:kind, deps:after.filter(d=>d!==id), custom:true};
+      if(kind==='insp') t.g=3;
+      const chain=node.querySelector('#ntChain');
+      if(chain&&chain.checked) heirs.forEach(h=>{const ht=LIST[jobId].find(x=>x.id===h); if(ht&&!ht.deps.includes(id)) ht.deps.push(id)});
+      before.forEach(b=>{const bt=LIST[jobId].find(x=>x.id===b); if(bt&&!bt.deps.includes(id)) bt.deps.push(id)});
+      const at=LIST[jobId].findIndex(x=>x.id===anchor.id);
+      LIST[jobId].splice(at+1,0,t);
+      LIST[jobId].forEach((x,i)=>x.i=i);
+      STATE[jobId][id]={s:'todo',on:null,note:'',who:'',lead:null,dur:null};
+      if(node.querySelector('#ntTpl').checked){
+        const master=PHASES_MASTER[P.job.kind], ph=master.find(p=>p[0]===t.ph);
+        if(ph) ph[1].push({...t,custom:true});
+      }
+      close(); recompute(); jobTab=jobId; render('jobs'); persist(jobId);
+    };
+  });
+}
+
+function crewRow(tr,val){
+  return `<div class="crewrow"><span class="lbl">${dot(tr)}${esc(TRADE[tr][0])}</span>
+    <select id="crew_${tr}" style="flex:1">
+      ${ROSTER.map(n=>`<option ${n===val?'selected':''}>${esc(n)}</option>`).join('')}
+      ${ROSTER.includes(val)?'':`<option selected>${esc(val)}</option>`}</select>
+    <span><button class="btn" data-addsub="crew_${tr}">New</button></span></div>`;
+}
+
+function addJob(existingId){
+  const E=existingId?JOBS.find(j=>j.id===existingId):null;
+  const std=tpl(E?E.kind:'standard');
+  const crew=(E&&E.crew)||{};
+  modal(`<div class="modal" role="dialog" aria-modal="true" aria-label="Job">
+    <div class="m-h">${tile('home','var(--brand)')}
+      <div><div class="t">${E?'Edit Job':'New Job'}</div>
+        <div class="s">${E?esc(E.name):'Cedar Creek Land &amp; Homes'}</div></div>
+      <button class="m-x" data-close aria-label="Close">&times;</button></div>
+    <div class="m-b">
+      <div class="fld"><label><span class="req">*</span>Address</label>
+        <input id="njName" placeholder="e.g. 812 Bayview Ave" value="${E?esc(E.name):''}"></div>
+      <div class="two">
+        <div class="fld"><label>Town</label><input id="njTown" placeholder="e.g. Beachwood" value="${E?esc(E.town):''}"></div>
+        <div class="fld"><label>Block / lot</label><input id="njBl" placeholder="e.g. B 214 / L 7" value="${E?esc(E.bl):''}"></div></div>
+      <div class="two">
+        <div class="fld"><label>Start date</label><input type="date" id="njStart" value="${E?E.start:iso(TODAY)}"></div>
+        <div class="fld"><label>Target certificate of occupancy</label><input type="date" id="njTarget" value="${E?E.target:''}"></div></div>
+      <div class="two">
+        <div class="fld"><label>Sequence</label><select id="njKind" ${E?'disabled':''}>
+          ${Object.entries(TEMPLATES).map(([k,v])=>`<option value="${k}" ${E&&E.kind===k?'selected':''}>${esc(v)}</option>`).join('')}</select>
+          <div class="help">${E?'Locked — swapping the sequence would discard this job’s statuses.'
+            :'Demolition swaps Phase 1 for the teardown steps from your 36 Regency Way sheet.'}</div></div>
+        ${E?`<div class="fld"><label>Job status</label><select id="njStatus">
+          <option value="open" ${E.closed?'':'selected'}>Open</option>
+          <option value="closed" ${E.closed?'selected':''}>Closed — CO issued</option></select>
+          <div class="help">A closed job stops generating work and drops out of the trades and look-ahead views.</div></div>`:''}
+      </div>
+      ${E?'':`<div class="fld"><label>Where does it stand today</label>
+        <select id="njThrough"><option value="">Nothing started yet</option>
+        ${std.map(t=>`<option value="${t.id}">Complete through — ${esc(t.n)}</option>`).join('')}</select>
+        <div class="help">Picking a task marks everything up to it complete, so you don't click through a job that's already underway.</div></div>`}
+      <div class="fld"><label>Crew on this job</label>
+        <div class="help" style="margin:0 0 9px">Every task picks up the contractor for its trade. Override any single task from the task itself.</div>
+        ${TRADES_SUB.map(tr=>crewRow(tr,crew[tr]||CREW[tr])).join('')}</div>
+    </div>
+    <div class="m-f"><span class="sp"></span><button class="btn" data-close>Cancel</button>
+      <button class="btn brand" id="njSave">${E?'Save Job':'Create Job'}</button></div></div>`,
+  (node,close)=>{
+    node.querySelector('#njName').focus();
+    const kindSel=node.querySelector('#njKind');
+    if(kindSel&&!E) kindSel.onchange=e=>{
+      const l=tpl(e.target.value), s=node.querySelector('#njThrough');
+      if(s) s.innerHTML='<option value="">Nothing started yet</option>'+l.map(t=>`<option value="${t.id}">Complete through — ${esc(t.n)}</option>`).join('');
+    };
+    node.querySelector('#njSave').onclick=()=>{
+      const name=node.querySelector('#njName').value.trim();
+      if(!name){node.querySelector('#njName').focus();return}
+      const start=node.querySelector('#njStart').value||iso(TODAY);
+      let target=node.querySelector('#njTarget').value;
+      if(!target){const d=D(start);d.setMonth(d.getMonth()+10);target=iso(d)}
+      const cr={}; TRADES_SUB.forEach(tr=>{const v=node.querySelector('#crew_'+tr).value; if(v)cr[tr]=v});
+      const town=node.querySelector('#njTown').value.trim()||'—';
+      const bl=node.querySelector('#njBl').value.trim()||'—';
+      if(E){
+        const stSel=node.querySelector('#njStatus');
+        Object.assign(E,{name,town,bl,start,target,crew:cr,closed:stSel?stSel.value==='closed':!!E.closed});
+        close(); recompute(); render(view); persist(E.id); return;
+      }
+      const j={id:'j'+(UID++)+'-'+Date.now().toString(36),name,town,bl,start,target,
+        kind:node.querySelector('#njKind').value,crew:cr,
+        through:node.querySelector('#njThrough').value||null,wip:{},fail:{}};
+      JOBS.push(j); instantiate(j);
+      close(); recompute(); jobTab=j.id; render('jobs'); persist(j.id);
+    };
+  });
+}
+
+/* =====================================================================
+   6. SHELL
+   ===================================================================== */
+function render(v){
+  view=v;
+  const host=document.getElementById('view');
+  host.innerHTML='';
+  host.appendChild(el(`<div>${({today:vToday,jobs:vJobs,trades:vTrades,look:vLook})[v]()}</div>`));
+  host.querySelectorAll('[data-j]').forEach(n=>n.onclick=()=>{sel=sel===n.dataset.j?null:n.dataset.j;render('today')});
+  host.querySelectorAll('[data-jt]').forEach(n=>n.onclick=()=>{jobTab=n.dataset.jt;render('jobs')});
+  host.querySelectorAll('[data-edit]').forEach(n=>n.onclick=e=>{
+    e.stopPropagation();const[j,t]=n.dataset.edit.split('|');editor(j,t)});
+  const bind=(id,fn)=>{const b=host.querySelector('#'+id);if(b)b.onclick=fn};
+  bind('clr',()=>{sel=null;render('today')});
+  host.querySelectorAll('[data-f]').forEach(n=>n.onclick=()=>{filter=n.dataset.f;render('jobs')});
+  host.querySelectorAll('[data-addph]').forEach(n=>n.onclick=e=>{
+    e.stopPropagation(); addTask(jobTab,null,n.dataset.addph)});
+  const jq=host.querySelector('#jq');
+  if(jq){ jq.oninput=()=>{query=jq.value;render('jobs');
+      const f=document.getElementById('jq'); if(f){f.focus();f.setSelectionRange(f.value.length,f.value.length)}}; }
+  bind('newTask',()=>addTask(jobTab,null));
+  bind('editJob',()=>addJob(jobTab));
+  bind('newJob',()=>addJob()); bind('newJob2',()=>addJob());
+}
+function headline(){
+  const open=PLAN.filter(P=>!P.job.closed);
+  const gates=open.flatMap(P=>P.list.filter(t=>t.k==='insp'&&!['done','na'].includes(P.st[t.id].s))
+    .map(t=>({n:t.n,d:P.st[t.id].es,j:P.job.name}))).sort((a,b)=>a.d-b.d)[0];
+  document.getElementById('hdrGate').textContent = gates? gates.n.replace(/ inspection/i,'')+' · '+fmt(gates.d) : '—';
+  const co=open.map(P=>P.co).sort((a,b)=>a-b)[0];
+  document.getElementById('hdrCO').textContent = co? fmtL(co) : '—';
+  const pn=document.getElementById('paceNote');
+  const behind=open.filter(P=>P.mobilized&&SETTINGS.pace&&P.pace>1.08).length;
+  pn.textContent = !SETTINGS.pace ? 'Pace adjustment off — showing the raw plan'
+    : behind ? behind+' of '+open.length+' open jobs are running behind; their remaining work is stretched to match'
+             : 'All open jobs tracking at or ahead of plan';
+}
+const _rc=recompute;
+recompute=function(){_rc();headline()};
+
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));
+  b.setAttribute('aria-selected','true'); render(b.dataset.v)});
+
+/* =====================================================================
+   7. STORAGE  — Supabase, one document per job plus one for settings
+   ===================================================================== */
+let db=null, saveTimer=null, pending=new Set(), lastSaved=null;
+
+const setSync=(txt,cls='')=>{const n=document.getElementById('syncState');
+  if(n){n.textContent=txt;n.className='badge '+cls}};
+
+const docJob = id => ({list:LIST[id], state:STATE[id]});
+const docMeta = () => ({jobs:JOBS, roster:ROSTER, settings:SETTINGS, uid:UID});
+
+function persist(jobId){
+  if(jobId) pending.add('job:'+jobId);
+  pending.add('meta');
+  if(!db) return;
+  setSync('Saving…','warning');
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(flush,900);
+}
+async function flush(){
+  if(!db||!pending.size) return;
+  const rows=[...pending].map(id=>({id, payload: id==='meta'?docMeta():docJob(id.slice(4)), updated_at:new Date().toISOString()}));
+  pending.clear();
+  const {error}=await db.from('schedule_docs').upsert(rows);
+  if(error){setSync('Not saved — '+error.message,'error');console.error(error);return}
+  lastSaved=new Date();
+  setSync('Saved '+lastSaved.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),'success');
+}
+async function loadAll(){
+  const {data,error}=await db.from('schedule_docs').select('id,payload');
+  if(error) throw error;
+  if(!data||!data.length){                       // first run on a fresh database
+    JOBS.forEach(j=>pending.add('job:'+j.id)); pending.add('meta');
+    await flush(); return 'seeded';
+  }
+  const meta=data.find(r=>r.id==='meta');
+  if(meta&&meta.payload){
+    if(meta.payload.jobs) JOBS=meta.payload.jobs;
+    if(meta.payload.roster) ROSTER=meta.payload.roster;
+    if(meta.payload.settings) Object.assign(SETTINGS,meta.payload.settings);
+    if(meta.payload.uid) UID=Math.max(UID,meta.payload.uid);
+  }
+  Object.keys(LIST).forEach(k=>delete LIST[k]);
+  Object.keys(STATE).forEach(k=>delete STATE[k]);
+  data.filter(r=>r.id.startsWith('job:')).forEach(r=>{
+    const id=r.id.slice(4);
+    if(r.payload&&r.payload.list&&r.payload.state){LIST[id]=r.payload.list;STATE[id]=r.payload.state}
+  });
+  JOBS.forEach(j=>{if(!LIST[j.id]) instantiate(j)});   // a job saved before its tasks
+  return 'loaded';
+}
+
+/* ---------- login ---------- */
+function loginScreen(msg){
+  document.querySelector('.page').innerHTML=`
+    <div class="card" style="max-width:420px;margin:48px auto">
+      <div class="card-h"><span class="tile"><svg viewBox="0 0 24 24"><path d="M12 3 2 11h3v9h6v-6h2v6h6v-9h3z"/></svg></span>
+        <div class="t">Sign in</div></div>
+      <div style="padding:18px">
+        <div class="fld"><label>Work email</label><input id="liEmail" type="email" placeholder="you@example.com"></div>
+        <button class="btn brand" id="liGo" style="width:100%">Email me a sign-in link</button>
+        <div class="help" id="liMsg" style="margin-top:10px">${msg||'You will get a link that signs you in on this computer. No password.'}</div>
+      </div></div>`;
+  const go=document.getElementById('liGo'), em=document.getElementById('liEmail');
+  em.focus();
+  const send=async()=>{
+    const email=em.value.trim(); if(!email) return;
+    go.disabled=true; document.getElementById('liMsg').textContent='Sending…';
+    const {error}=await db.auth.signInWithOtp({email,options:{emailRedirectTo:location.href.split('#')[0]}});
+    document.getElementById('liMsg').textContent = error? error.message : 'Check your email and open the link on this computer.';
+    go.disabled=false;
+  };
+  go.onclick=send; em.onkeydown=e=>{if(e.key==='Enter')send()};
+}
+
+/* ---------- backup export / import (unchanged behaviour) ---------- */
+document.getElementById('save').onclick=()=>{
+  const payload={v:3,jobs:JOBS,list:LIST,state:STATE,settings:SETTINGS,roster:ROSTER};
+  const blob=new Blob([JSON.stringify(payload,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='cedar-creek-status-'+iso(new Date())+'.json';a.click();URL.revokeObjectURL(a.href)};
+document.getElementById('load').onclick=()=>document.getElementById('file').click();
+document.getElementById('file').onchange=e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{try{
+    const j=JSON.parse(rd.result);
+    if(j.settings) Object.assign(SETTINGS,j.settings);
+    if(j.roster) ROSTER=j.roster;
+    if(j.jobs&&j.list&&j.state){
+      JOBS=j.jobs; Object.keys(LIST).forEach(k=>delete LIST[k]); Object.keys(STATE).forEach(k=>delete STATE[k]);
+      Object.assign(LIST,j.list); Object.assign(STATE,j.state);
+    }
+    jobTab=JOBS[0].id; recompute(); render(view); JOBS.forEach(x=>persist(x.id));
+  }catch(err){alert('That file could not be read as a saved status file.')}};
+  rd.readAsText(f); e.target.value=''};
+
+/* ---------- settings ---------- */
+const sDur=document.getElementById('setDur'), sInsp=document.getElementById('setInsp'), sPace=document.getElementById('setPace');
+function wireSettings(){
+  sDur.value=SETTINGS.minDur; sInsp.checked=SETTINGS.minDurInsp; sPace.checked=SETTINGS.pace;
+  sDur.onchange=()=>{SETTINGS.minDur=Math.max(1,parseInt(sDur.value,10)||1);sDur.value=SETTINGS.minDur;recompute();render(view);persist()};
+  sInsp.onchange=()=>{SETTINGS.minDurInsp=sInsp.checked;recompute();render(view);persist()};
+  sPace.onchange=()=>{SETTINGS.pace=sPace.checked;recompute();render(view);persist()};
+}
+
+/* ---------- boot ---------- */
+function start(){
+  wireSettings();
+  document.getElementById('hdrDate').textContent=TODAY.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const openJob=JOBS.find(j=>!j.closed)||JOBS[0];
+  jobTab=openJob?openJob.id:null;
+  recompute(); render('today');
+}
+async function boot(){
+  const configured = /^https:\/\//.test(SUPABASE_URL) && SUPABASE_KEY.length>20;
+  if(!configured){ setSync('Offline — not connected','error'); start(); return; }
+  db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  if(REQUIRE_LOGIN){
+    const {data:{session}}=await db.auth.getSession();
+    if(!session){ setSync('Signed out'); loginScreen(); return; }
+    db.auth.onAuthStateChange((_e,s)=>{ if(!s) location.reload() });
+  }
+  try{
+    setSync('Loading…','warning');
+    const how=await loadAll();
+    setSync(how==='seeded'?'Saved — first sync':'Loaded','success');
+  }catch(err){ setSync('Could not load — '+err.message,'error'); console.error(err); }
+  start();
+  window.addEventListener('focus',async()=>{        // pick up edits made on another computer
+    if(!db||pending.size) return;
+    try{ await loadAll(); recompute(); render(view); setSync('Up to date','success') }catch(e){}
+  });
+  window.addEventListener('beforeunload',e=>{ if(pending.size){ flush(); e.preventDefault(); e.returnValue='' } });
+}
+boot();
+</script>
+</body>
+</html>
