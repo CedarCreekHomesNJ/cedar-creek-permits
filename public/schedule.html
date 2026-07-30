@@ -209,12 +209,14 @@ input[type=checkbox]{width:auto}
 @media (prefers-reduced-motion:no-preference){.item{animation:fi .18s ease both}@keyframes fi{from{opacity:0}}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/config.js"></script>
 </head>
 <body>
 
 <div class="global-header">
   <div class="gh-logo">Cedar Creek <span>Land &amp; Homes</span></div>
-  <a class="btn" href="/">Permit Tool</a><div class="gh-sp"></div>
+  <a class="btn" href="/">Permit Tool</a>
+  <div class="gh-sp"></div>
   <div class="gh-meta" id="hdrDate"></div>
   <span class="badge" id="syncState">Starting…</span>
   <button class="btn" id="save">Export backup</button>
@@ -283,9 +285,12 @@ input[type=checkbox]{width:auto}
 /* =====================================================================
    0. CONNECTION  — paste your two Supabase values here, nothing else
    ===================================================================== */
-const SUPABASE_URL  = 'https://jsxdcbabvbwmcwjgfscv.supabase.co';
-const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzeGRjYmFidmJ3bWN3amdmc2N2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNDQ0NDEsImV4cCI6MjEwMDkyMDQ0MX0.kc1XBQeS-XM-4Ue0krPT8G8Q4kp87HI5ClGNOwz-lIg';
-const REQUIRE_LOGIN = true;   // set to false to skip the email login while testing
+/* Your Supabase details live in public/config.js so that replacing this
+   file with a newer version never disconnects you again. */
+const CFG = (typeof window!=='undefined' && window.CC_CONFIG) || {};
+const SUPABASE_URL  = CFG.url || 'PASTE_YOUR_PROJECT_URL_HERE';
+const SUPABASE_KEY  = CFG.key || 'PASTE_YOUR_ANON_KEY_HERE';
+const REQUIRE_LOGIN = CFG.requireLogin !== false;
 
 /* =====================================================================
    1. REFERENCE DATA
@@ -562,13 +567,24 @@ let UID=1;
    ===================================================================== */
 const D=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
 const iso=d=>d.toISOString().slice(0,10);
-const wd=(d,n)=>{const x=new Date(d);let k=Math.abs(n),s=n<0?-1:1;
+const wd=(d,n)=>{const x=new Date(d);
+  if(isNaN(x)) return wd(TODAY,0);
+  let k=Math.abs(n),s=n<0?-1:1;
   while(k>0){x.setDate(x.getDate()+s);const g=x.getDay();if(g&&g!==6)k--}
   while(x.getDay()===0||x.getDay()===6)x.setDate(x.getDate()+(n<0?-1:1));return x};
 const cal=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
 const cdiff=(a,b)=>Math.round((b-a)/864e5);
-const wdiff=(a,b)=>{let n=0,x=new Date(a);const s=b>a?1:-1;
-  while(x.toDateString()!==b.toDateString()){x.setDate(x.getDate()+s);const g=x.getDay();if(g&&g!==6)n+=s}return n};
+const wdiff=(a,b)=>{
+  if(!(a instanceof Date)||!(b instanceof Date)||isNaN(a)||isNaN(b)) return 0;
+  let n=0,x=new Date(a),guard=0;
+  const s=b>a?1:-1;
+  while(x.toDateString()!==b.toDateString()){
+    if(++guard>4000) return n;           // ~15 years; anything beyond is a bad date, not a schedule
+    x.setDate(x.getDate()+s);
+    const g=x.getDay(); if(g&&g!==6) n+=s;
+  }
+  return n;
+};
 const fmt=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 const fmtL=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
 
@@ -585,11 +601,28 @@ function paceOf(job,list,M){
   if(actual<=0.001) return expect>0.05?2.5:1;
   return Math.min(2.5,Math.max(0.6,expect/actual));
 }
+/* Tasks are shown in list order but must be CALCULATED in dependency order —
+   a task added mid-sequence can point at something earlier in the list, and
+   scheduling it before its predecessors produces nonsense dates. */
+function inDependencyOrder(list){
+  const by={}; list.forEach(t=>by[t.id]=t);
+  const mark={}, out=[];
+  const visit=id=>{
+    const t=by[id]; if(!t||mark[id]) return;
+    mark[id]=1;                        // set before descending, so a cycle stops here
+    t.deps.forEach(visit);
+    out.push(t);
+  };
+  list.forEach(t=>visit(t.id));
+  return out;
+}
+
 function build(job){
   const list=LIST[job.id], M=STATE[job.id], SU=succOf(job.id), st={}, mob=D(job.start);
+  const order=inDependencyOrder(list);
   const pace=paceOf(job,list,M);
   const lagOf=(t,rec)=>Math.max(1,Math.round(baseDur(t,rec)*pace));
-  list.forEach(t=>{
+  order.forEach(t=>{
     const rec=M[t.id]||(M[t.id]={s:'todo',due:null,doneOn:null,note:'',who:'',lead:null,lag:null});
     const r={t,rec,s:rec.s,lead:leadOf(t,rec)};
     r.lag=lagOf(t,rec);
@@ -618,15 +651,15 @@ function build(job){
     st[t.id]=r;
   });
 
-  const endT = st['co']||st[list[list.length-1].id];
+  const endT = st['co']||st[order[order.length-1].id];
   const end = endT.ef;
-  list.slice().reverse().forEach(t=>{
-    const r=st[t.id], sc=SU[t.id]||[];
+  order.slice().reverse().forEach(t=>{
+    const r=st[t.id], sc=(SU[t.id]||[]).filter(sid=>st[sid]&&st[sid].lf instanceof Date&&!isNaN(st[sid].lf));
     r.lf = sc.length ? sc.reduce((m,sid)=>{
       const succStart = wd(st[sid].lf, -(Math.max(0,st[sid].lag-1)));
       const mustFinish = wd(succStart, -(1+(t.g||0)));
       return mustFinish<m?mustFinish:m;
-    }, new Date(864e13)) : end;
+    }, end) : end;
     const settled = r.s==='done'||r.s==='na';
     r.slack = settled?99:wdiff(r.ef, r.lf);
     r.crit  = !settled && r.slack<=0;

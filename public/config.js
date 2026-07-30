@@ -1,0 +1,1 @@
+window.CC_CONFIG={url:'https://jsxdcbabvbwmcwjgfscv.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzeGRjYmFidmJ3bWN3amdmc2N2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNDQ0NDEsImV4cCI6MjEwMDkyMDQ0MX0.kc1XBQeS-XM-4Ue0krPT8G8Q4kp87HI5ClGNOwz-lIg'};
