@@ -202,6 +202,10 @@ input[type=checkbox]{width:auto}
 .crewrow .lbl{flex:0 0 152px;font-size:12.5px}
 .inline-add{margin-top:6px;display:flex;gap:8px}
 
+#warnbar{display:none;padding:11px 16px;font-size:13.5px;font-weight:600;color:#fff;background:var(--error);
+  text-align:center;line-height:1.5}
+#warnbar a{color:#fff;text-decoration:underline}
+#warnbar small{display:block;font-weight:400;font-size:12.5px;opacity:.92;margin-top:2px}
 .empty{padding:34px 20px;text-align:center;color:var(--text-3)}
 .empty .t{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px}
 .foot{font-size:11.5px;color:var(--text-3);line-height:1.7;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
@@ -212,6 +216,8 @@ input[type=checkbox]{width:auto}
 <script src="/config.js"></script>
 </head>
 <body>
+
+<div id="warnbar"></div>
 
 <div class="global-header">
   <div class="gh-logo">Cedar Creek <span>Land &amp; Homes</span></div>
@@ -1306,7 +1312,12 @@ async function flush(){
   const rows=[...pending].map(id=>({id, payload: id==='meta'?docMeta():docJob(id.slice(4)), updated_at:new Date().toISOString()}));
   pending.clear();
   const {error}=await db.from('schedule_docs').upsert(rows);
-  if(error){setSync('Not saved — '+error.message,'error');console.error(error);return}
+  if(error){
+    setSync('Not saved','error');
+    warn('A change could not be saved. <b>Your recent edits are only in this tab.</b><small>'+esc(error.message)+
+         ' — use Export backup now so you do not lose them.</small>');
+    console.error(error); return;
+  }
   lastSaved=new Date();
   setSync('Saved '+lastSaved.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),'success');
 }
@@ -1396,9 +1407,25 @@ function start(){
   jobTab=openJob?openJob.id:null;
   recompute(); render('today');
 }
+function warn(html){
+  const w=document.getElementById('warnbar');
+  w.innerHTML=html; w.style.display='block';
+}
 async function boot(){
+  /* Opened straight from the Downloads folder rather than the website. */
+  if(location.protocol==='file:'){
+    setSync('Downloaded copy','error');
+    warn('You are looking at a downloaded copy of this page. <b>Nothing you enter here is saved.</b>'+
+         '<small>Open <a href="https://cedar-creek-permits.vercel.app/schedule.html">cedar-creek-permits.vercel.app/schedule.html</a> instead, and bookmark it.</small>');
+    start(); return;
+  }
   const configured = /^https:\/\//.test(SUPABASE_URL) && SUPABASE_KEY.length>20;
-  if(!configured){ setSync('Offline — not connected','error'); start(); return; }
+  if(!configured){
+    setSync('Not connected','error');
+    warn('Not connected to the database. <b>Nothing you enter will be saved.</b>'+
+         '<small>public/config.js is missing or empty. Fix that before you make any changes.</small>');
+    start(); return;
+  }
   db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   if(REQUIRE_LOGIN){
     const {data:{session}}=await db.auth.getSession();
@@ -1409,7 +1436,12 @@ async function boot(){
     setSync('Loading…','warning');
     const how=await loadAll();
     setSync(how==='seeded'?'Saved — first sync':'Loaded','success');
-  }catch(err){ setSync('Could not load — '+err.message,'error'); console.error(err); }
+  }catch(err){
+    setSync('Could not load','error');
+    warn('Could not reach the database. <b>Nothing you enter will be saved.</b><small>'+esc(err.message)+
+         ' — check whether the Supabase project is paused, then reload.</small>');
+    console.error(err);
+  }
   start();
   window.addEventListener('focus',async()=>{        // pick up edits made on another computer
     if(!db||pending.size) return;
