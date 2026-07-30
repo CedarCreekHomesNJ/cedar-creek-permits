@@ -260,8 +260,8 @@ input[type=checkbox]{width:auto}
   </div>
 
   <div class="settings">
-    <label for="setDur">Default days after the previous task</label>
-    <input type="number" id="setDur" min="1" max="60" value="7">
+    <label for="setDur">Default days to complete a task</label>
+    <input type="number" id="setDur" min="1" max="60" value="5">
     <span>working days</span>
     <label><input type="checkbox" id="setInsp"> Apply to township inspections</label>
     <label><input type="checkbox" id="setPace" checked> Stretch remaining work to my actual pace</label>
@@ -328,7 +328,7 @@ const CREW = {
   str:'M&E Contractors INC - Stairs', pnt:'Mike - Painter', flr:'Lexi Flooring', til:'Greg Kozek',
   lan:'Brian Magee - Lot work', pav:'Just Paving LLC', adm:'You', mun:'Township'
 };
-const SETTINGS = {minDur:7, minDurInsp:false, pace:true};
+const SETTINGS = {minDur:5, minDurInsp:false, pace:true};
 let ROSTER = ['Ahmet Kamil','Jeff Jerman','Lisa Jerman','Kevin Duerkes','PDS','Dario','Leslie Ramdeen','Ron Post',
  'Jason Arbor Smith','Brian Magee - Lot work','Jan Mycek - Mason','Georgie - Mason','Wilson Fernandez - FC Framing',
  'Rocco - Northeastern Lumber','MJ Lyons Corp - Junio','M&E Contractors INC - Stairs','Railing Mench','Rusty Iron Works',
@@ -648,12 +648,13 @@ function build(job){
       if(f>es){es=f; driver=pr}});
     if(rec.on){const o=D(rec.on); if(o>es)es=o}
     if(r.s==='wip'&&es<TODAY) es=TODAY;
+    es = wd(es,0);                                   // never let a start land on a weekend
     r.es=es; r.driver=driver;
 
-    r.auto = wd(es, Math.max(0,r.lag-1));            // default target completion
-    r.ef   = rec.due ? D(rec.due) : r.auto;
-    if(r.ef<r.es) r.ef=r.es;
-    r.tight = rec.due ? wdiff(r.auto, r.ef) : 0;     // negative = you committed tighter than the chain allows
+    r.auto  = wd(es, Math.max(0,r.lag-1));           // earliest it could finish
+    r.ef    = rec.due ? D(rec.due) : r.auto;          // the target completion date
+    r.start = wd(r.ef, -(Math.max(0,r.lag-1)));       // start falls out of the target, not the other way round
+    r.tight = rec.due ? wdiff(r.auto, r.ef) : 0;      // negative = target is tighter than the chain allows
     st[t.id]=r;
   });
 
@@ -693,20 +694,20 @@ function actions(P){
     if(t.k==='insp'&&r.s==='wip'&&/Scheduled/i.test(r.rec.note||'')){add({p:1,tag:'CHASE',act:t.n,tid:t.id,crit:r.crit,
       why:`${r.rec.note}. No result recorded since. Call the office.`});return}
     if(r.lead>0&&r.s==='todo'){
-      const by=cal(r.es,-r.lead), days=cdiff(TODAY,by);
+      const by=cal(r.start,-r.lead), days=cdiff(TODAY,by);
       if(days<=3){const late=days<0;
         add({p:late?1:2,tag:t.k==='order'?'ORDER':'CALL',act:t.n,tid:t.id,crit:r.crit,
-          why: late? `Needs ${r.lead} days notice, so this should have gone out <b>${Math.abs(days)} day(s) ago</b>. Start slides to ${fmt(r.es)} and everything behind it moves with it.`
-                   : `Work starts about <b>${fmt(r.es)}</b>. ${(CREW[t.tr]||'They')} need ${r.lead} days notice — the call goes out by ${fmt(by)}.`});
+          why: late? `Needs ${r.lead} days notice, so this should have gone out <b>${Math.abs(days)} day(s) ago</b>. Start slides past ${fmt(r.start)} and everything behind it moves with it.`
+                   : `Starts <b>${fmt(r.start)}</b> to finish by ${fmt(r.ef)}. ${(CREW[t.tr]||'They')} need ${r.lead} days notice — the call goes out by ${fmt(by)}.`});
       } return}
     if(r.s==='todo'&&ready(t)&&r.crit&&(t.k==='admin'||t.k==='call'||t.tr==='adm')){
       add({p:2,tag:'DO',act:t.n,tid:t.id,crit:true,
         why:`Nothing is blocking this and it sits on the critical path. Every day it waits is a day on the CO date.`});return}
     if(r.s==='wip'&&r.crit&&!r.rec.on){add({p:3,tag:'PUSH',act:t.n,tid:t.id,crit:true,
       why:`Open with no committed date, and on the critical path. The schedule can't move until ${(CREW[t.tr]||'the trade')} gives you one.`});return}
-    if(r.s==='todo'&&ready(t)&&cdiff(TODAY,r.es)<=1&&!r.lead&&!['mun','adm'].includes(t.tr)){
+    if(r.s==='todo'&&ready(t)&&cdiff(TODAY,r.start)<=1&&!r.lead&&!['mun','adm'].includes(t.tr)){
       add({p:3,tag:'RELEASE',act:t.n,tid:t.id,crit:r.crit,
-        why:`Predecessors cleared as of ${fmt(r.es)} and nobody is scheduled on it.`})}
+        why:`Can start ${fmt(r.start)} to hit ${fmt(r.ef)}, and nobody is scheduled on it.`})}
   });
   return out;
 }
@@ -796,7 +797,7 @@ function item(a){
     ${tile(TAGICON[a.tag]||'check',PCOLOR[a.p])}
     <div class="body">
       <div class="ttl">${esc(a.act)}</div>
-      <div class="meta">${dot(t.tr)}${esc(whoOf(P.job,t,r.rec))} · ${esc(P.job.name)} · due ${fmt(r.ef)}</div>
+      <div class="meta">${dot(t.tr)}${esc(whoOf(P.job,t,r.rec))} · ${esc(P.job.name)} · ${fmt(r.start)} &rarr; ${fmt(r.ef)} (${r.lag}d)</div>
       <div class="why">${a.why}</div>
     </div>
     <div class="right"><span class="badge ${bc}">${a.tag}</span>
@@ -858,7 +859,9 @@ function vJobs(){
         ${r.rec.note?`<div style="font-size:11.5px;color:var(--text-3);font-weight:400">${esc(r.rec.note)}</div>`:''}</td>
       <td><span class="badge ${bc}">${SLABEL[r.s]}</span></td>
       <td>${dot(t.tr)}${esc(whoOf(P.job,t,r.rec))}</td>
-      <td class="num">${open?fmt(r.ef)+(r.tight<0?' <span style="color:var(--error)" title="tighter than the chain allows">!</span>':'')
+      <td class="num">${open
+        ? fmt(r.ef)+(r.tight<0?' <span style="color:var(--error)" title="target is tighter than the chain allows">!</span>':'')
+          +`<div style="font-size:11px;color:var(--text-3)">starts ${fmt(r.start)} · ${r.lag}d</div>`
         :(r.rec.doneOn?fmtL(D(r.rec.doneOn)):'—')}</td>
       <td class="num" style="${r.crit?'color:var(--error-text);font-weight:600':''}">${!open?'—':r.crit?'Critical':r.slack+'d float'}</td></tr>`;
   });
@@ -909,7 +912,7 @@ function vTrades(){
         <span class="badge">${c.rows.length} task${c.rows.length>1?'s':''}</span></div>
       <div class="tblwrap"><table><tbody>${c.rows.map(({job,t,r})=>`
         <tr class="row" data-edit="${job.id}|${t.id}"><td style="width:32%">${esc(job.name)}</td>
-        <td class="n">${esc(t.n)}</td><td class="num">start ~${fmt(r.es)} · due ${fmt(r.ef)}</td>
+        <td class="n">${esc(t.n)}</td><td class="num">${fmt(r.start)} &rarr; ${fmt(r.ef)} · ${r.lag}d</td>
         <td class="num">${r.lead?r.lead+'d notice':''}</td></tr>`).join('')}</tbody></table></div>`).join('')
       :`<div class="empty"><div class="t">No trade work scheduled in the next six weeks</div>Nothing is queued on the open jobs.</div>`}</div>`;
 }
@@ -975,7 +978,7 @@ function handoff(jobId,tid){
   ready.sort((a,b)=>a.r.es-b.r.es);
   const line=({r})=>{
     const who=whoOf(P.job,r.t,r.rec);
-    const by=r.lead>0?cal(r.es,-r.lead):null;
+    const by=r.lead>0?cal(r.start,-r.lead):null;
     const late=by&&by<=TODAY;
     return `<button class="item" data-edit="${jobId}|${r.t.id}" style="border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px">
       ${tile(r.t.k==='insp'?'cal':r.lead>0?'phone':'arrow', late?'var(--error)':'var(--brand)')}
@@ -983,9 +986,10 @@ function handoff(jobId,tid){
         <div class="ttl">${esc(who)}</div>
         <div class="meta">${dot(r.t.tr)}${esc(TRADE[r.t.tr][0])} · ${esc(r.t.n)}</div>
         <div class="why" style="border-left-color:${late?'var(--error)':'var(--brand)'}">
-          Now due <b>${fmt(r.ef)}</b>. ${r.t.k==='insp' ? `Ready to book — township turnaround runs about ${r.t.g} working days.`
-            : r.lead>0 ? `Can start ${fmt(r.es)}; ${r.lead} days notice needed, so ${late?'<b>this call is already due</b>':'call by <b>'+fmt(by)+'</b>'}.`
-            : `Clear to start ${fmt(r.es)}. Nobody is scheduled on it.`}</div></div>
+          Starts <b>${fmt(r.start)}</b>, due <b>${fmt(r.ef)}</b> (${r.lag} days).
+          ${r.t.k==='insp' ? `Ready to book — township turnaround runs about ${r.t.g} working days.`
+            : r.lead>0 ? `${r.lead} days notice needed, so ${late?'<b>this call is already due</b>':'call by <b>'+fmt(by)+'</b>'}.`
+            : `Nobody is scheduled on it.`}</div></div>
       <div class="right">${late?'<span class="badge error">Call now</span>':'<span class="badge info">Next</span>'}
         ${r.crit?'<span class="badge inverse">Critical path</span>':''}</div></button>`};
   modal(`<div class="modal" role="dialog" aria-modal="true" aria-label="What is next">
@@ -1026,14 +1030,16 @@ function editor(jobId,tid){
       <div class="two">
         <div class="fld"><label>Target completion date</label>
           <input type="date" id="edDue" value="${rec.due||iso(r.ef)}">
-          <div class="help">${rec.due?'Set by you.':'Worked out automatically.'}
-            ${r.driver?`${r.lag} days after <b>${esc(r.driver.t.n)}</b> finishes (${fmt(r.driver.ef)}).`
-                      :`${r.lag} days from when it can start (${fmt(r.es)}).`}
-            ${r.tight<0?`<br><b style="color:var(--error-text)">${Math.abs(r.tight)} day(s) tighter than the chain allows.</b>`:''}</div></div>
-        <div class="fld"><label>Days after the previous task finishes</label>
+          <div class="help">${rec.due?'Set by you.':'Worked out automatically — '}${
+            r.driver?`${r.lag} working days after <b>${esc(r.driver.t.n)}</b> finishes (${fmt(r.driver.ef)}).`
+                    :`${r.lag} working days from when it can start.`}</div></div>
+        <div class="fld"><label>Days to complete</label>
           <input type="number" min="1" max="200" id="edLag" value="${baseDur(t,rec)}">
-          <div class="help">${rec.lag!=null||rec.dur!=null?'Set by you.':`Default ${SETTINGS.minDur} days.`}
+          <div class="help">${rec.lag!=null||rec.dur!=null?'Set by you.':`Default ${SETTINGS.minDur} working days.`}
             ${P.pace!==1&&SETTINGS.pace?` Stretched to <b>${r.lag}</b> to match this job's pace.`:''}</div></div>
+      </div>
+      <div class="fld"><label>Start date</label>
+        <div id="edStart" class="deps" style="background:#FAFAF9;border-left:3px solid var(--brand);padding:8px 11px;border-radius:0 var(--r) var(--r) 0"></div>
       </div>
       <div class="two">
         <div class="fld"><label>Completed on</label>
@@ -1065,6 +1071,25 @@ function editor(jobId,tid){
     let cur=rec.s;
     node.querySelectorAll('#segS button').forEach(b=>b.onclick=()=>{cur=b.dataset.s;
       node.querySelectorAll('#segS button').forEach(x=>x.classList.toggle('on',x===b))});
+
+    /* Start date is derived, never typed. Recalculate it as either input changes. */
+    const dueI=node.querySelector('#edDue'), lagI=node.querySelector('#edLag'), out=node.querySelector('#edStart');
+    const refreshStart=()=>{
+      const dv=dueI.value, raw=Math.max(1,parseInt(lagI.value,10)||1);
+      /* use the same pace-adjusted figure the schedule itself uses */
+      const n=Math.max(1,Math.round(raw*(SETTINGS.pace?P.pace:1)));
+      if(!dv){out.innerHTML='Set a target completion date and the start date appears here.';return}
+      const st=wd(D(dv), -(n-1));
+      const early = st < r.es;
+      out.innerHTML =
+        `Starts <b>${fmt(st)}</b> &mdash; ${n} working day${n===1?'':'s'} back from ${fmt(D(dv))}.` +
+        (n!==raw?` (${raw} stretched to ${n} for this job's pace.)`:'') +
+        (early ? `<br><b style="color:var(--error-text)">That start is too early.</b>
+                  This cannot begin before ${fmt(r.es)}, because of what it is waiting on.
+                  Move the target out or reduce the days to complete.`
+               : (r.lead>0 ? `<br>${esc(CREW[t.tr]||'They')} need ${r.lead} days notice, so call by <b>${fmt(cal(st,-r.lead))}</b>.` : ''));
+    };
+    dueI.oninput=refreshStart; lagI.oninput=refreshStart; refreshStart();
     const commit=status=>{
       const M=STATE[jobId][tid];
       const was=M.s;
@@ -1117,7 +1142,7 @@ function addTask(jobId,anchorId,phaseName){
         <div class="fld"><label>Phase</label><select id="ntPhase">${phases.map(p=>`<option ${p===anchor.ph?'selected':''}>${esc(p)}</option>`).join('')}</select></div>
         <div class="fld"><label>Trade</label><select id="ntTrade">${tradeOpts(anchor.tr)}</select></div></div>
       <div class="two">
-        <div class="fld"><label>Days after the previous task finishes</label><input type="number" id="ntDur" min="1" max="200" value="7"></div>
+        <div class="fld"><label>Days to complete</label><input type="number" id="ntDur" min="1" max="200" value="5"></div>
         <div class="fld"><label>Notice needed (days)</label><input type="number" id="ntLead" min="0" max="120" value="7"></div></div>
       <div class="fld"><label>Kind</label><select id="ntKind">
         <option value="field">Work on site</option><option value="call">A call to make</option>
