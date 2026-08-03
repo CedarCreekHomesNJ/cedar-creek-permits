@@ -301,7 +301,7 @@ const REQUIRE_LOGIN = CFG.requireLogin !== false;
 /* =====================================================================
    1. REFERENCE DATA
    ===================================================================== */
-const TODAY = new Date(2026,6,28);
+const TODAY = (()=>{const n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate())})();
 const LEAD_DEFAULT = 7;
 const NO_LEAD = ['adm','mun'];
 
@@ -680,6 +680,20 @@ function build(job){
           slip:wdiff(end,D(job.target)),mobilized:doneN>0||TODAY>=mob};
 }
 
+/* Notes are typed by hand, so dig a date out of one when there is one:
+   8/6/26, 08/06/2026, 2026-08-06 all work. */
+function noteDate(note){
+  if(!note) return null;
+  let m = note.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return new Date(+m[1], +m[2]-1, +m[3]);
+  m = note.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if(m){
+    let y=+m[3]; if(y<100) y+=2000;
+    return new Date(y, +m[1]-1, +m[2]);
+  }
+  return null;
+}
+
 function actions(P){
   const {job,st,list,succ}=P,out=[];
   if(job.closed) return out;
@@ -691,8 +705,18 @@ function actions(P){
       why:`Recorded as <b>Fail</b> and never re-booked. Everything downstream stays open — including the CO.`});return}
     if(t.k==='insp'&&r.s!=='wip'&&ready(t)){add({p:2,tag:'BOOK',act:t.n,tid:t.id,crit:r.crit,
       why:`Predecessors are signed off. Township turnaround runs about ${t.g} working days and ${(succ[t.id]||[]).length} task(s) sit behind it.`});return}
-    if(t.k==='insp'&&r.s==='wip'&&/Scheduled/i.test(r.rec.note||'')){add({p:1,tag:'CHASE',act:t.n,tid:t.id,crit:r.crit,
-      why:`${r.rec.note}. No result recorded since. Call the office.`});return}
+    if(t.k==='insp'&&r.s==='wip'&&/Scheduled/i.test(r.rec.note||'')){
+      /* A booked inspection is not a problem until its date has been and gone. */
+      const when = noteDate(r.rec.note) || (r.rec.due?D(r.rec.due):r.ef);
+      if(when && when >= TODAY){
+        add({p:3,tag:'BOOKED',act:t.n,tid:t.id,crit:r.crit,
+          why:`${r.rec.note} Nothing to do until then — record the result once it happens.`});
+      } else {
+        const late = when? cdiff(when,TODAY) : null;
+        add({p:1,tag:'CHASE',act:t.n,tid:t.id,crit:r.crit,
+          why:`${r.rec.note} That was ${late!=null?`<b>${late} day(s) ago</b>`:'in the past'} and no result is recorded. Call the office.`});
+      }
+      return}
     if(r.lead>0&&r.s==='todo'){
       const by=cal(r.start,-r.lead), days=cdiff(TODAY,by);
       if(days<=3){const late=days<0;
@@ -808,7 +832,7 @@ function vToday(){
   const list=sel?ALL.filter(a=>a.job.id===sel):ALL;
   const g=[[1,'Already Late','Should have gone out before today','warning'],
            [2,'Today','Notice runs out inside three days, or a gate is ready to book','clock'],
-           [3,'Keep Moving','Clear to start, nobody assigned to it','arrow']];
+           [3,'Keep Moving','Booked, or clear to start with nobody on it','arrow']];
   const body=g.map(([p,h,s,ic])=>{const rows=list.filter(a=>a.p===p);if(!rows.length)return'';
     return `<div class="card"><div class="card-h">${tile(ic,PCOLOR[p],'sm')}
       <div class="t">${h} <small>· ${s}</small></div><span class="badge ${p===1?'error':p===2?'warning':'info'}">${rows.length}</span></div>
