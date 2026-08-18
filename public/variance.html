@@ -167,8 +167,13 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
   </div>
 
   <div class="card">
-    <h2>Where every lot stands</h2>
+    <h2>Variance Phase</h2>
     <div class="stages" id="stageStrip"></div>
+  </div>
+
+  <div class="card">
+    <h2>Test pits</h2>
+    <div class="stages" id="pitStrip"></div>
   </div>
 
   <div class="card">
@@ -250,7 +255,10 @@ const OPTS = {
   overall_status:['Open','Closed']
 };
 
-let LOTS=[], filterStage=null;
+let LOTS=[], filterStage=null, filterPits=null;
+const PITS=['Done','Scheduled','Not done','Not recorded'];
+function pitBucket(l){ const v=l.test_pits;
+  return v==='Yes'?'Done':v==='Scheduled'?'Scheduled':v==='No'?'Not done':'Not recorded' }
 
 /* ---------- stage engine ---------- */
 function countyDone(l){
@@ -364,12 +372,14 @@ function render(){
   const tw=document.getElementById('fTownship').value;
   const pm=document.getElementById('fPm').value;
   const st=document.getElementById('fStatus').value;
+  const scope = LOTS.filter(l=> !st || l.overall_status===st);
 
   const shown = LOTS.filter(l=>{
     if (st && l.overall_status!==st) return false;
     if (tw && l.township!==tw) return false;
     if (pm && l.project_manager!==pm) return false;
     if (filterStage!==null && stageOf(l)!==filterStage) return false;
+    if (filterPits!==null && pitBucket(l)!==filterPits) return false;
     if (q){
       const hay=[l.block,l.lot,l.address,l.notes,l.township,l.project_manager]
         .join(' ').toLowerCase();
@@ -397,13 +407,17 @@ function render(){
 
   /* stage strip */
   const counts={};
-  LOTS.filter(l=>l.overall_status!=='Closed').forEach(l=>{
-    const s=stageOf(l); counts[s]=(counts[s]||0)+1;
-  });
+  scope.forEach(l=>{ const s=stageOf(l); counts[s]=(counts[s]||0)+1 });
   document.getElementById('stageStrip').innerHTML = STAGES.map((label,i)=>
     counts[i] ? `<button class="stage ${filterStage===i?'on':''}" data-stage="${i}">
       <span class="n">${counts[i]}</span><span class="l">${esc(label)}</span></button>` : ''
   ).join('');
+
+  document.getElementById('pitStrip').innerHTML = PITS.map(b=>{
+    const n=scope.filter(l=>pitBucket(l)===b).length;
+    return n ? `<button class="stage ${filterPits===b?'on':''}" data-pit="${b}">
+      <span class="n">${n}</span><span class="l">${b}</span></button>` : '';
+  }).join('') || '<span class="empty">No lots.</span>';
 
   /* table */
   document.getElementById('rowCount').textContent = shown.length+' of '+LOTS.length+' lots';
@@ -542,11 +556,15 @@ document.getElementById('clearF').onclick=()=>{
   document.getElementById('fTownship').value='';
   document.getElementById('fPm').value='';
   document.getElementById('fStatus').value='Open';
-  filterStage=null; render();
+  filterStage=null; filterPits=null; render();
 };
 document.getElementById('stageStrip').onclick=e=>{
   const b=e.target.closest('.stage'); if(!b) return;
   const s=+b.dataset.stage; filterStage = filterStage===s ? null : s; render();
+};
+document.getElementById('pitStrip').onclick=e=>{
+  const b=e.target.closest('.stage'); if(!b) return;
+  filterPits = filterPits===b.dataset.pit ? null : b.dataset.pit; render();
 };
 document.getElementById('rows').onclick=e=>{
   const tr=e.target.closest('tr[data-id]'); if(tr) openLot(tr.dataset.id);
