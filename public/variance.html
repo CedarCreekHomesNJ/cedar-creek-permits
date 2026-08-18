@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Variance Tracker — Cedar Creek</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/config.js"></script>
+<style>
+:root{
+  --brand:#0176d3; --brand-dark:#014486; --brand-tint:#eef4ff;
+  --bg:#f3f3f3; --card:#fff; --line:#e5e5e5; --line-strong:#c9c9c9;
+  --ink:#181818; --muted:#5c5c5c; --faint:#8c8c8c;
+  --ok:#2e844a; --ok-tint:#eefbf2; --warn:#a86403; --warn-tint:#fff5e6;
+  --bad:#ba0517; --bad-tint:#feeced;
+  --radius:6px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+h1,h2,h3{margin:0;font-weight:600}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:var(--ink)}
+
+/* header */
+header{background:var(--brand-dark);color:#fff;padding:10px 20px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header h1{font-size:16px;letter-spacing:.01em}
+header .sub{font-size:12px;opacity:.75}
+header .spacer{flex:1}
+header button{background:transparent;border:1px solid rgba(255,255,255,.5);
+  color:#fff;padding:5px 12px;border-radius:var(--radius)}
+header button:hover{background:rgba(255,255,255,.12)}
+
+.wrap{max-width:1400px;margin:0 auto;padding:18px 20px 60px}
+
+/* cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  margin-bottom:16px}
+.card>h2{font-size:14px;padding:12px 16px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:10px}
+.card>h2 .count{background:var(--bg);color:var(--muted);font-size:12px;font-weight:600;
+  padding:1px 8px;border-radius:10px}
+
+/* attention lists */
+.attn{list-style:none;margin:0;padding:0}
+.attn li{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;
+  gap:12px;align-items:baseline;flex-wrap:wrap;cursor:pointer}
+.attn li:last-child{border-bottom:0}
+.attn li:hover{background:var(--brand-tint)}
+.attn .id{font-weight:600;min-width:120px}
+.attn .why{flex:1;min-width:220px}
+.attn .age{font-size:12px;color:var(--muted);white-space:nowrap}
+.empty{padding:16px;color:var(--muted)}
+
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;
+  border-radius:10px;white-space:nowrap}
+.p-bad{background:var(--bad-tint);color:var(--bad)}
+.p-warn{background:var(--warn-tint);color:var(--warn)}
+.p-ok{background:var(--ok-tint);color:var(--ok)}
+.p-neutral{background:var(--bg);color:var(--muted)}
+
+/* stage strip */
+.stages{display:flex;gap:6px;overflow-x:auto;padding:14px 16px}
+.stage{flex:0 0 auto;min-width:96px;border:1px solid var(--line);border-radius:var(--radius);
+  padding:8px 10px;background:#fff;text-align:left;cursor:pointer}
+.stage:hover{border-color:var(--brand)}
+.stage.on{border-color:var(--brand);background:var(--brand-tint)}
+.stage .n{font-size:20px;font-weight:600;line-height:1.1}
+.stage .l{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* filters */
+.filters{display:flex;gap:10px;flex-wrap:wrap;padding:12px 16px;align-items:center}
+.filters select,.filters input{padding:6px 8px;border:1px solid var(--line-strong);
+  border-radius:var(--radius);background:#fff}
+.filters input[type=search]{min-width:200px}
+.btn{background:var(--brand);color:#fff;border:0;padding:7px 14px;border-radius:var(--radius);
+  font-weight:600}
+.btn:hover{background:var(--brand-dark)}
+.btn-plain{background:#fff;color:var(--brand);border:1px solid var(--line-strong)}
+.btn-plain:hover{background:var(--brand-tint)}
+
+/* table */
+.tbl-scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;
+  text-transform:uppercase;letter-spacing:.04em;padding:8px 12px;
+  border-bottom:1px solid var(--line-strong);white-space:nowrap;background:#fafafa}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--brand-tint)}
+.lotid{font-weight:600;white-space:nowrap}
+.next{color:var(--muted)}
+.bar{height:4px;background:var(--line);border-radius:2px;width:90px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--brand)}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:20}
+.scrim.on{display:block}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:#fff;
+  z-index:21;transform:translateX(100%);transition:transform .18s ease;
+  display:flex;flex-direction:column}
+.drawer.on{transform:none}
+.drawer header{background:#fff;color:var(--ink);border-bottom:1px solid var(--line);
+  padding:14px 18px}
+.drawer header h2{font-size:16px}
+.drawer header button{border-color:var(--line-strong);color:var(--muted)}
+.drawer header button:hover{background:var(--bg)}
+.dbody{flex:1;overflow-y:auto;padding:4px 18px 20px}
+.dfoot{border-top:1px solid var(--line);padding:12px 18px;display:flex;gap:10px;
+  align-items:center;background:#fafafa}
+fieldset{border:0;border-top:1px solid var(--line);margin:16px 0 0;padding:14px 0 0}
+legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--faint);padding:0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-top:10px}
+.f{display:flex;flex-direction:column;gap:4px}
+.f.full{grid-column:1/-1}
+.f label{font-size:11px;color:var(--muted);font-weight:600}
+.f input,.f select,.f textarea{padding:6px 8px;border:1px solid var(--line-strong);
+  border-radius:var(--radius);width:100%;background:#fff}
+.f textarea{min-height:60px;resize:vertical}
+.checks{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+.checks label{display:flex;align-items:center;gap:6px;font-size:13px}
+.banner{margin-top:14px;padding:10px 12px;border-radius:var(--radius);font-size:13px}
+.b-next{background:var(--brand-tint);color:var(--brand-dark)}
+.b-stall{background:var(--bad-tint);color:var(--bad)}
+.err{color:var(--bad);font-size:13px}
+
+/* auth */
+.auth{max-width:380px;margin:80px auto;background:#fff;border:1px solid var(--line);
+  border-radius:var(--radius);padding:26px}
+.auth h2{font-size:17px;margin-bottom:6px}
+.auth p{color:var(--muted);margin:0 0 16px}
+.auth input{width:100%;padding:9px 10px;border:1px solid var(--line-strong);
+  border-radius:var(--radius);margin-bottom:12px}
+.auth .btn{width:100%}
+.hidden{display:none!important}
+@media (max-width:640px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="authView" class="auth hidden">
+  <h2>Variance tracker</h2>
+  <p>Sign in with your email. We'll send a link — no password.</p>
+  <input type="email" id="email" placeholder="you@cedarcreek.com" autocomplete="email">
+  <button class="btn" id="sendLink">Email me a link</button>
+  <p id="authMsg" style="margin-top:12px"></p>
+</div>
+
+<div id="appView" class="hidden">
+<header>
+  <h1>Variance tracker</h1>
+  <span class="sub" id="whoami"></span>
+  <span class="spacer"></span>
+  <button onclick="location.href='/index.html'">Permits</button>
+  <button onclick="location.href='/schedule.html'">Field Desk</button>
+  <button id="addLot">Add lot</button>
+  <button id="signOut">Sign out</button>
+</header>
+
+<div class="wrap">
+
+  <div class="card">
+    <h2>Needs attention <span class="count" id="stallCount">0</span></h2>
+    <ul class="attn" id="stallList"></ul>
+  </div>
+
+  <div class="card">
+    <h2>Where every lot stands</h2>
+    <div class="stages" id="stageStrip"></div>
+  </div>
+
+  <div class="card">
+    <div class="filters">
+      <input type="search" id="q" placeholder="Search block, lot, address, notes">
+      <select id="fTownship"><option value="">All townships</option></select>
+      <select id="fPm"><option value="">All managers</option></select>
+      <select id="fStatus">
+        <option value="Open">Open only</option>
+        <option value="">Open and closed</option>
+        <option value="Closed">Closed only</option>
+      </select>
+      <button class="btn-plain btn" id="clearF">Clear filters</button>
+      <span class="spacer" style="flex:1"></span>
+      <span id="rowCount" style="color:var(--muted);font-size:12px"></span>
+    </div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr>
+          <th>Block / lot</th><th>Township</th><th>Stage</th><th>Progress</th>
+          <th>What's next</th><th>Flag</th><th>Manager</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <header style="display:flex;align-items:center;gap:12px">
+    <h2 id="dTitle">Lot</h2>
+    <span class="spacer" style="flex:1"></span>
+    <button id="dClose">Close</button>
+  </header>
+  <div class="dbody" id="dBody"></div>
+  <div class="dfoot">
+    <button class="btn" id="dSave">Save changes</button>
+    <button class="btn btn-plain" id="dCancel">Cancel</button>
+    <span class="spacer" style="flex:1"></span>
+    <span id="dMsg" style="font-size:13px;color:var(--muted)"></span>
+  </div>
+</aside>
+
+<script>
+/* ---------- config: fill these two in ---------- */
+const SUPABASE_URL  = window.CC_CONFIG.url;
+const SUPABASE_ANON = window.CC_CONFIG.key;
+/* ---------------------------------------------- */
+
+/* how long something can sit before it counts as stalled (days) */
+const WAIT = {
+  ocscd: 30,        // application and check mailed, nothing back
+  twa: 30,          // TWA mailed, nothing back
+  resolution: 45,   // variance approved, no signed resolution
+  plans: 7          // requirements satisfied, plans not ordered
+};
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const STAGES = [
+  'Not started','Survey complete','Engineering work','Engineering plan drawn',
+  'Internal review','Variance submitted','Hearing scheduled','Variance approved',
+  'Resolution signed','County approvals','Compliance approved','Requirements satisfied',
+  'House plans','Ready to build'
+];
+
+const OPTS = {
+  variance_approval:['Not Yet Heard','Approved','Denied','Carried'],
+  resolution_status:['Not Received','Received','Signed Copy Received'],
+  test_pits:['','No','Scheduled','Yes'],
+  ochd_status:['','Not Received','Approved'],
+  ocscd_status:['','Not Mailed','Application & Check Mailed','Approved'],
+  twa_status:['','Not needed','Requested','Mailed','Approved'],
+  resolution_compliance:['','Not Received','Submitted','Received','Approved'],
+  sell_build:['','Build','Sell'],
+  overall_status:['Open','Closed']
+};
+
+let LOTS=[], filterStage=null;
+
+/* ---------- stage engine ---------- */
+function countyDone(l){
+  const ochd = l.ochd_status==='Approved';
+  const ocscd = l.ocscd_status==='Approved';
+  const twa = l.twa_status==='Approved' || l.twa_status==='Not needed';
+  return ochd && ocscd && twa;
+}
+function stageOf(l){
+  let s = l.pds_phase ? Math.min(l.pds_phase,4) : 0;
+  if (l.pds_phase===5 || l.variance_submitted_date) s = Math.max(s,5);
+  if (l.hearing_date) s = Math.max(s,6);
+  if (l.variance_approval==='Approved') s = Math.max(s,7);
+  if (l.resolution_status==='Signed Copy Received') s = Math.max(s,8);
+  if (s>=8 && (l.ochd_status||l.ocscd_status||l.twa_status)) s = Math.max(s,9);
+  if (countyDone(l)) s = Math.max(s,10);
+  if (l.resolution_compliance==='Approved') s = Math.max(s,10);
+  if (l.requirements_satisfied) s = Math.max(s,11);
+  if (l.house_plans_ordered) s = Math.max(s,12);
+  if (l.house_plans_picked_up) s = Math.max(s,13);
+  return s;
+}
+
+/* ---------- what's next ---------- */
+function nextAction(l){
+  if (l.overall_status==='Closed') return 'Closed';
+  const s = stageOf(l);
+  if (l.variance_approval==='Denied') return 'Variance denied — decide next move';
+  if (l.variance_approval==='Carried')
+    return l.hearing_date && new Date(l.hearing_date)>=today()
+      ? 'Carried — next hearing '+fmt(l.hearing_date)
+      : 'Carried — get a new hearing date';
+  if (s<1) return 'Order the survey';
+  if (s===1) return 'Send to engineering';
+  if (s===2) return 'Engineering to draw the plan';
+  if (s===3) return 'Jeff to review and approve';
+  if (s===4) return 'Submit the variance application';
+  if (s===5) return l.hearing_date ? 'Hearing '+fmt(l.hearing_date) : 'Get on a hearing agenda';
+  if (s===6) return l.hearing_date && new Date(l.hearing_date)<today()
+      ? 'Record the hearing outcome' : 'Hearing '+fmt(l.hearing_date);
+  if (s===7) return 'Chase the signed resolution';
+  if (s===8 || s===9){
+    const w=[];
+    if (l.test_pits!=='Yes') w.push(l.test_pits==='Scheduled'?'test pits scheduled':'test pits');
+    if (l.twa_status && l.twa_status!=='Not needed' && l.twa_status!=='Approved') w.push('TWA');
+    if (l.ochd_status!=='Approved') w.push('OCHD');
+    if (l.ocscd_status!=='Approved') w.push('OCSCD');
+    return w.length ? 'Waiting on '+w.join(', ') : 'Confirm county approvals';
+  }
+  if (s===10) return 'Get resolution compliance approved';
+  if (s===11) return 'Order the house plans';
+  if (s===12) return 'Pick up the house plans';
+  if (!l.sell_build) return 'Decide sell or build';
+  return l.sell_build==='Build' ? 'Ready to build — hand to scheduler' : 'Ready to list';
+}
+
+/* ---------- stall detection ---------- */
+function stalls(l){
+  if (l.overall_status==='Closed') return [];
+  const out=[], t=today();
+  const age=d=>Math.floor((t-new Date(d))/86400000);
+
+  if (l.hearing_date && new Date(l.hearing_date)<t && l.variance_approval==='Not Yet Heard')
+    out.push({sev:'bad',why:'Hearing date passed, no outcome recorded',days:age(l.hearing_date)});
+
+  if (l.variance_approval==='Carried' && (!l.hearing_date || new Date(l.hearing_date)<t))
+    out.push({sev:'bad',why:'Carried with no new hearing date',days:null});
+
+  if (l.ocscd_status==='Application & Check Mailed'){
+    if (l.ocscd_date && age(l.ocscd_date)>WAIT.ocscd)
+      out.push({sev:'bad',why:'OCSCD mailed, nothing back',days:age(l.ocscd_date)});
+    else if (!l.ocscd_date)
+      out.push({sev:'warn',why:'OCSCD mailed — no date recorded',days:null});
+  }
+  if (l.twa_status==='Mailed' || l.twa_status==='Requested'){
+    if (l.twa_date && age(l.twa_date)>WAIT.twa)
+      out.push({sev:'bad',why:'TWA sent, nothing back',days:age(l.twa_date)});
+    else if (!l.twa_date)
+      out.push({sev:'warn',why:'TWA sent — no date recorded',days:null});
+  }
+  if (l.variance_approval==='Approved' && l.variance_approval_date
+      && l.resolution_status!=='Signed Copy Received'
+      && age(l.variance_approval_date)>WAIT.resolution)
+    out.push({sev:'bad',why:'Approved, still no signed resolution',days:age(l.variance_approval_date)});
+
+  if (l.requirements_satisfied && !l.house_plans_ordered){
+    const basis = l.compliance_date;
+    if (basis && age(basis)>WAIT.plans)
+      out.push({sev:'bad',why:'Requirements met, plans not ordered',days:age(basis)});
+    else if (!basis)
+      out.push({sev:'warn',why:'Requirements met, plans not ordered',days:null});
+  }
+  if (l.ochd_status!=='Approved' && l.test_pits==='No'
+      && l.resolution_status==='Signed Copy Received')
+    out.push({sev:'warn',why:'At OCHD with no test pits done',days:null});
+
+  return out;
+}
+
+/* ---------- helpers ---------- */
+function today(){const d=new Date();d.setHours(0,0,0,0);return d}
+function fmt(d){ if(!d) return '—';
+  const [y,m,dd]=d.split('-'); return `${+m}/${+dd}/${y.slice(2)}` }
+function lotName(l){ return `Block ${l.block} · Lot ${l.lot}` }
+function esc(s){ return (s??'').toString()
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+/* ---------- render ---------- */
+function render(){
+  const q=document.getElementById('q').value.toLowerCase().trim();
+  const tw=document.getElementById('fTownship').value;
+  const pm=document.getElementById('fPm').value;
+  const st=document.getElementById('fStatus').value;
+
+  const shown = LOTS.filter(l=>{
+    if (st && l.overall_status!==st) return false;
+    if (tw && l.township!==tw) return false;
+    if (pm && l.project_manager!==pm) return false;
+    if (filterStage!==null && stageOf(l)!==filterStage) return false;
+    if (q){
+      const hay=[l.block,l.lot,l.address,l.notes,l.township,l.project_manager]
+        .join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a,b)=>stageOf(a)-stageOf(b) || String(a.block).localeCompare(String(b.block)));
+
+  /* attention list — open lots only, worst first */
+  const flagged=[];
+  LOTS.filter(l=>l.overall_status!=='Closed').forEach(l=>{
+    stalls(l).forEach(s=>flagged.push({l,s}));
+  });
+  flagged.sort((a,b)=> (a.s.sev===b.s.sev ? (b.s.days||0)-(a.s.days||0)
+                                          : a.s.sev==='bad'?-1:1));
+  document.getElementById('stallCount').textContent=flagged.length;
+  document.getElementById('stallList').innerHTML = flagged.length ? flagged.map(f=>`
+    <li data-id="${f.l.id}">
+      <span class="pill ${f.s.sev==='bad'?'p-bad':'p-warn'}">${f.s.sev==='bad'?'Stalled':'Check'}</span>
+      <span class="id">${esc(lotName(f.l))}</span>
+      <span class="why">${esc(f.s.why)}</span>
+      <span class="age">${f.s.days!==null?f.s.days+' days':''}</span>
+    </li>`).join('')
+    : '<li class="empty">Nothing stalled. Every open lot is moving.</li>';
+
+  /* stage strip */
+  const counts={};
+  LOTS.filter(l=>l.overall_status!=='Closed').forEach(l=>{
+    const s=stageOf(l); counts[s]=(counts[s]||0)+1;
+  });
+  document.getElementById('stageStrip').innerHTML = STAGES.map((label,i)=>
+    counts[i] ? `<button class="stage ${filterStage===i?'on':''}" data-stage="${i}">
+      <span class="n">${counts[i]}</span><span class="l">${esc(label)}</span></button>` : ''
+  ).join('');
+
+  /* table */
+  document.getElementById('rowCount').textContent = shown.length+' of '+LOTS.length+' lots';
+  document.getElementById('rows').innerHTML = shown.map(l=>{
+    const s=stageOf(l), sl=stalls(l);
+    const worst = sl.some(x=>x.sev==='bad') ? 'p-bad' : sl.length ? 'p-warn' : '';
+    return `<tr data-id="${l.id}">
+      <td class="lotid">${esc(l.block)} / ${esc(l.lot)}${l.address?'<br><span style="font-weight:400;color:var(--muted)">'+esc(l.address)+'</span>':''}</td>
+      <td>${esc(l.township||'—')}</td>
+      <td>${esc(STAGES[s])}</td>
+      <td><span class="bar"><i style="width:${Math.round(s/13*100)}%"></i></span></td>
+      <td class="next">${esc(nextAction(l))}</td>
+      <td>${sl.length?`<span class="pill ${worst}">${sl.length}</span>`:''}</td>
+      <td>${esc(l.project_manager||'—')}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" class="empty">No lots match these filters.</td></tr>';
+}
+
+/* ---------- drawer ---------- */
+let editing=null;
+function field(l,key,label,type='text'){
+  if (OPTS[key]) return `<div class="f"><label>${label}</label><select data-k="${key}">
+    ${OPTS[key].map(o=>`<option value="${esc(o)}"${(l[key]||'')===o?' selected':''}>${o||'—'}</option>`).join('')}
+    </select></div>`;
+  return `<div class="f"><label>${label}</label>
+    <input type="${type}" data-k="${key}" value="${esc(l[key]??'')}"></div>`;
+}
+function check(l,key,label){
+  return `<label><input type="checkbox" data-k="${key}"${l[key]?' checked':''}> ${label}</label>`;
+}
+function openLot(id){
+  const l = id ? LOTS.find(x=>x.id===id) : {block:'',lot:'',overall_status:'Open',
+    variance_approval:'Not Yet Heard',resolution_status:'Not Received'};
+  editing = l;
+  document.getElementById('dTitle').textContent = id ? lotName(l) : 'New lot';
+  const sl = id ? stalls(l) : [];
+  document.getElementById('dBody').innerHTML = `
+    ${id?`<div class="banner b-next"><strong>Next:</strong> ${esc(nextAction(l))}</div>`:''}
+    ${sl.map(s=>`<div class="banner b-stall">${esc(s.why)}${s.days!==null?' — '+s.days+' days':''}</div>`).join('')}
+    <fieldset><legend>The lot</legend><div class="grid">
+      ${field(l,'block','Block')}${field(l,'lot','Lot')}
+      ${field(l,'address','Address')}${field(l,'township','Township')}
+      ${field(l,'project_manager','Project manager')}${field(l,'sell_build','Sell or build')}
+      ${field(l,'overall_status','Status')}${field(l,'pds_phase','PDS phase (1-5)','number')}
+    </div></fieldset>
+    <fieldset><legend>Engineering and submission</legend><div class="grid">
+      ${field(l,'survey_complete_date','Survey complete','date')}
+      ${field(l,'engineering_plan_date','Plan drawn','date')}
+      ${field(l,'internal_review_date','Internal review','date')}
+      ${field(l,'variance_submitted_date','Variance submitted','date')}
+    </div></fieldset>
+    <fieldset><legend>Hearing and resolution</legend><div class="grid">
+      ${field(l,'hearing_date','Hearing date','date')}
+      ${field(l,'variance_approval','Variance outcome')}
+      ${field(l,'variance_approval_date','Outcome date','date')}
+      ${field(l,'resolution_status','Resolution')}
+      ${field(l,'resolution_date','Resolution date','date')}
+    </div></fieldset>
+    <fieldset><legend>County approvals</legend><div class="grid">
+      ${field(l,'test_pits','Test pits')}${field(l,'test_pits_date','Test pits date','date')}
+      ${field(l,'twa_status','TWA')}${field(l,'twa_date','TWA date','date')}
+      ${field(l,'ochd_status','OCHD')}${field(l,'ochd_date','OCHD date','date')}
+      ${field(l,'ocscd_status','OCSCD')}${field(l,'ocscd_date','OCSCD date','date')}
+    </div></fieldset>
+    <fieldset><legend>Compliance and plans</legend><div class="grid">
+      ${field(l,'resolution_compliance','Resolution compliance')}
+      ${field(l,'compliance_date','Compliance date','date')}
+      ${field(l,'house_plans_ordered_date','Plans ordered on','date')}
+    </div>
+    <div class="checks">
+      ${check(l,'requirements_satisfied','Requirements satisfied')}
+      ${check(l,'house_plans_ordered','Plans ordered')}
+      ${check(l,'house_plans_picked_up','Plans picked up')}
+    </div></fieldset>
+    <fieldset><legend>Site prep</legend><div class="checks">
+      ${check(l,'shed','Shed')}${check(l,'paver_driveway','Paver driveway')}
+      ${check(l,'retaining_wall','Retaining wall')}${check(l,'trench','Trench')}
+    </div></fieldset>
+    <fieldset><legend>Notes</legend>
+      <div class="f full"><textarea data-k="notes">${esc(l.notes??'')}</textarea></div>
+    </fieldset>`;
+  document.getElementById('dMsg').textContent='';
+  document.getElementById('scrim').classList.add('on');
+  document.getElementById('drawer').classList.add('on');
+}
+function closeDrawer(){
+  document.getElementById('scrim').classList.remove('on');
+  document.getElementById('drawer').classList.remove('on');
+  editing=null;
+}
+async function saveLot(){
+  const msg=document.getElementById('dMsg');
+  const patch={};
+  document.querySelectorAll('#dBody [data-k]').forEach(el=>{
+    const k=el.dataset.k;
+    if (el.type==='checkbox') patch[k]=el.checked;
+    else if (el.type==='number') patch[k]= el.value===''?null:Number(el.value);
+    else patch[k]= el.value===''?null:el.value;
+  });
+  if (!patch.block || !patch.lot){ msg.textContent='Block and lot are both required.';
+    msg.className='err'; return; }
+  msg.className=''; msg.textContent='Saving…';
+  patch.updated_at=new Date().toISOString();
+  let res;
+  if (editing.id) res = await sb.from('variance_lots').update(patch).eq('id',editing.id).select();
+  else res = await sb.from('variance_lots').insert(patch).select();
+  if (res.error){ msg.textContent=res.error.message; msg.className='err'; return; }
+  const row=res.data[0];
+  const i=LOTS.findIndex(x=>x.id===row.id);
+  if (i>=0) LOTS[i]=row; else LOTS.push(row);
+  render(); closeDrawer();
+}
+
+/* ---------- load ---------- */
+async function load(){
+  const {data,error}=await sb.from('variance_lots').select('*');
+  if (error){ alert('Could not load lots: '+error.message); return; }
+  LOTS=data;
+  const fill=(id,vals)=>{
+    const el=document.getElementById(id), keep=el.value;
+    el.innerHTML=el.options[0].outerHTML+
+      [...new Set(vals.filter(Boolean))].sort()
+        .map(v=>`<option>${esc(v)}</option>`).join('');
+    el.value=keep;
+  };
+  fill('fTownship',LOTS.map(l=>l.township));
+  fill('fPm',LOTS.map(l=>l.project_manager));
+  render();
+}
+
+/* ---------- events ---------- */
+['q','fTownship','fPm','fStatus'].forEach(id=>
+  document.getElementById(id).addEventListener('input',render));
+document.getElementById('clearF').onclick=()=>{
+  document.getElementById('q').value='';
+  document.getElementById('fTownship').value='';
+  document.getElementById('fPm').value='';
+  document.getElementById('fStatus').value='Open';
+  filterStage=null; render();
+};
+document.getElementById('stageStrip').onclick=e=>{
+  const b=e.target.closest('.stage'); if(!b) return;
+  const s=+b.dataset.stage; filterStage = filterStage===s ? null : s; render();
+};
+document.getElementById('rows').onclick=e=>{
+  const tr=e.target.closest('tr[data-id]'); if(tr) openLot(tr.dataset.id);
+};
+document.getElementById('stallList').onclick=e=>{
+  const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
+};
+document.getElementById('addLot').onclick=()=>openLot(null);
+document.getElementById('dClose').onclick=closeDrawer;
+document.getElementById('dCancel').onclick=closeDrawer;
+document.getElementById('scrim').onclick=closeDrawer;
+document.getElementById('dSave').onclick=saveLot;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDrawer() });
+
+document.getElementById('sendLink').onclick=async()=>{
+  const email=document.getElementById('email').value.trim();
+  const m=document.getElementById('authMsg');
+  if(!email){ m.textContent='Enter your email first.'; m.className='err'; return; }
+  m.className=''; m.textContent='Sending…';
+  const {error}=await sb.auth.signInWithOtp({email,
+    options:{emailRedirectTo:window.location.href}});
+  m.textContent = error ? error.message : 'Link sent. Check your email.';
+  m.className = error ? 'err' : '';
+};
+document.getElementById('signOut').onclick=async()=>{
+  await sb.auth.signOut(); location.reload();
+};
+
+/* ---------- boot ---------- */
+(async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if (session){
+    document.getElementById('appView').classList.remove('hidden');
+    document.getElementById('whoami').textContent=session.user.email;
+    load();
+  } else {
+    document.getElementById('authView').classList.remove('hidden');
+  }
+  sb.auth.onAuthStateChange((_e,s)=>{ if(s && document.getElementById('authView')
+    .classList.contains('hidden')===false) location.reload(); });
+})();
+</script>
+</body>
+</html>
