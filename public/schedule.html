@@ -1263,7 +1263,7 @@ function addJob(existingId){
         <div class="help" style="margin:0 0 9px">Every task picks up the contractor for its trade. Override any single task from the task itself.</div>
         ${TRADES_SUB.map(tr=>crewRow(tr,crew[tr]||CREW[tr])).join('')}</div>
     </div>
-    <div class="m-f"><span class="sp"></span><button class="btn" data-close>Cancel</button>
+    <div class="m-f">${E?`<button class="btn" id="njDel" style="color:#B3261E;border-color:#B3261E">Delete Job</button>`:''}<span class="sp"></span><button class="btn" data-close>Cancel</button>
       <button class="btn brand" id="njSave">${E?'Save Job':'Create Job'}</button></div></div>`,
   (node,close)=>{
     node.querySelector('#njName').focus();
@@ -1271,6 +1271,24 @@ function addJob(existingId){
     if(kindSel&&!E) kindSel.onchange=e=>{
       const l=tpl(e.target.value), s=node.querySelector('#njThrough');
       if(s) s.innerHTML='<option value="">Nothing started yet</option>'+l.map(t=>`<option value="${t.id}">Complete through — ${esc(t.n)}</option>`).join('');
+    };
+    const njDel=node.querySelector('#njDel');
+    if(njDel) njDel.onclick=async()=>{
+      if(!confirm('Delete "'+E.name+'"? Its tasks, dates and notes go with it. This cannot be undone.')) return;
+      const gone=E.id;
+      const gi=JOBS.findIndex(j=>j.id===gone); if(gi>=0) JOBS.splice(gi,1);
+      delete LIST[gone]; delete STATE[gone];
+      pending.delete('job:'+gone);
+      close();
+      if(jobTab===gone) jobTab=null;
+      recompute(); render(view);
+      persist();
+      if(db){
+        const {error}=await db.from('schedule_docs').delete().eq('id','job:'+gone);
+        if(error) warn('The job left the list, but its stored copy could not be removed.<small>'+esc(error.message)+'</small>');
+        await db.from('variance_lots').update({field_desk_job_id:null})
+          .eq('field_desk_job_id',gone).then(()=>{},()=>{});
+      }
     };
     node.querySelector('#njSave').onclick=()=>{
       const name=node.querySelector('#njName').value.trim();
