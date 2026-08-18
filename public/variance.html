@@ -125,6 +125,8 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
 .b-next{background:var(--brand-tint);color:var(--brand-dark)}
 .b-stall{background:var(--bad-tint);color:var(--bad)}
 .err{color:var(--bad);font-size:13px}
+.hint{font-size:12px;color:var(--muted);margin:8px 0 0}
+.hint.done{color:var(--ok)}
 
 /* auth */
 .auth{max-width:380px;margin:80px auto;background:#fff;border:1px solid var(--line);
@@ -277,8 +279,8 @@ function stageOf(l){
   if (countyDone(l)) s = Math.max(s,10);
   if (l.resolution_compliance==='Approved') s = Math.max(s,10);
   if (l.requirements_satisfied) s = Math.max(s,11);
-  if (l.house_plans_ordered) s = Math.max(s,12);
-  if (l.house_plans_picked_up) s = Math.max(s,13);
+  if (l.house_plans_ordered || l.house_plans_picked_up) s = Math.max(s,12);
+  if (l.ready_to_build) s = Math.max(s,13);
   return s;
 }
 
@@ -310,9 +312,11 @@ function nextAction(l){
   }
   if (s===10) return 'Get resolution compliance approved';
   if (s===11) return 'Order the house plans';
-  if (s===12) return 'Pick up the house plans';
+  if (s===12) return l.house_plans_picked_up
+      ? 'Flip Ready to build to start permits and the build'
+      : 'Pick up the house plans';
   if (!l.sell_build) return 'Decide sell or build';
-  return l.sell_build==='Build' ? 'Ready to build — hand to scheduler' : 'Ready to list';
+  return l.sell_build==='Build' ? 'Handed off — building' : 'Ready to list';
 }
 
 /* ---------- stall detection ---------- */
@@ -454,6 +458,8 @@ function openLot(id){
   editing = l;
   document.getElementById('dTitle').textContent = id ? lotName(l) : 'New lot';
   const sl = id ? stalls(l) : [];
+  const rtbOk = !!(l.requirements_satisfied && l.house_plans_picked_up);
+  const pushed = !!(l.permit_package_id && l.field_desk_job_id);
   document.getElementById('dBody').innerHTML = `
     ${id?`<div class="banner b-next"><strong>Next:</strong> ${esc(nextAction(l))}</div>`:''}
     ${sl.map(s=>`<div class="banner b-stall">${esc(s.why)}${s.days!==null?' — '+s.days+' days':''}</div>`).join('')}
@@ -492,6 +498,17 @@ function openLot(id){
       ${check(l,'house_plans_ordered','Plans ordered')}
       ${check(l,'house_plans_picked_up','Plans picked up')}
     </div></fieldset>
+    <fieldset><legend>Ready to build</legend>
+    <div class="checks"><label>
+      <input type="checkbox" data-k="ready_to_build"${rtbOk&&!pushed?'':' disabled'}${l.ready_to_build?' checked':''}>
+      Ready to build</label></div>
+    ${pushed
+      ? `<p class="hint done">Handed off ${l.ready_to_build_date?fmt(l.ready_to_build_date):''}${l.permit_package_id?' · permit package created':''}${l.field_desk_job_id?' · Field Desk job '+esc(l.field_desk_job_id):''}</p>`
+      : rtbOk
+        ? `<p class="hint">Ticking this and saving creates the permit package and the Field Desk job. It cannot be undone from here.</p>`
+        : `<p class="hint">Available once requirements are satisfied and plans are picked up.</p>`}
+    </fieldset>
+
     <fieldset><legend>Site prep</legend><div class="checks">
       ${check(l,'shed','Shed')}${check(l,'paver_driveway','Paver driveway')}
       ${check(l,'retaining_wall','Retaining wall')}${check(l,'trench','Trench')}
@@ -499,6 +516,14 @@ function openLot(id){
     <fieldset><legend>Notes</legend>
       <div class="f full"><textarea data-k="notes">${esc(l.notes??'')}</textarea></div>
     </fieldset>`;
+  const rtbBox=document.querySelector('#dBody [data-k="ready_to_build"]');
+  if (rtbBox && !pushed){
+    const prereqs=[...document.querySelectorAll(
+      '#dBody [data-k="requirements_satisfied"],#dBody [data-k="house_plans_picked_up"]')];
+    const syncRtb=()=>{ const ok=prereqs.every(el=>el.checked);
+      rtbBox.disabled=!ok; if(!ok) rtbBox.checked=false; };
+    prereqs.forEach(el=>el.addEventListener('change',syncRtb));
+  }
   document.getElementById('dMsg').textContent='';
   document.getElementById('scrim').classList.add('on');
   document.getElementById('drawer').classList.add('on');
@@ -508,6 +533,64 @@ function closeDrawer(){
   document.getElementById('drawer').classList.remove('on');
   editing=null;
 }
+/* ---------- ready to build: push to permits + field desk ---------- */
+async function handoff(l, patch){
+  const notes=[];
+  const label = l.address ? l.address+' (B '+patch.block+' / L '+patch.lot+')'
+                          : 'Block '+patch.block+' Lot '+patch.lot;
+  const iso = d => d.toISOString().slice(0,10);
+
+  if (!l.permit_package_id){
+    try{
+      const {data:pk,error:pe} = await sb.from('packages').select('*');
+      if (pe) throw pe;
+      const town=(patch.township||'').toLowerCase().split(' ')[0];
+      const tpl = town ? (pk||[]).find(p=>p.name.toLowerCase().startsWith(town)) : null;
+      const id = crypto.randomUUID();
+      const {error} = await sb.from('packages')
+        .insert({id, name: label+' \u2014 Permits', form_ids: tpl ? tpl.form_ids : []});
+      if (error) throw error;
+      patch.permit_package_id = id;
+      notes.push(tpl ? 'Permit package created from '+tpl.name
+        : 'Permit package created but empty \u2014 no template for '+(patch.township||'this township'));
+    }catch(e){ notes.push('Permit package FAILED: '+e.message) }
+  }
+
+  if (!l.field_desk_job_id){
+    try{
+      const {data:meta,error:me} = await sb.from('schedule_docs')
+        .select('*').eq('id','meta').single();
+      if (me) throw me;
+      const jobs = (meta.payload.jobs||[]).slice();
+      const src = jobs.slice().reverse().find(j=>j.kind==='standard');
+      if (!src) throw new Error('no standard job to copy the task list from');
+      const {data:sd,error:se} = await sb.from('schedule_docs')
+        .select('*').eq('id','job:'+src.id).single();
+      if (se) throw se;
+      const list = sd.payload.list||[];
+      if (!list.length) throw new Error('source job has no task list');
+      const state={};
+      list.forEach(t=>{ state[t.id]={s:'todo',on:null,who:'',lead:null,note:''} });
+      const uid=(meta.payload.uid||jobs.length)+1;
+      const jid='j'+uid+'-'+Math.random().toString(36).slice(2,10);
+      const start=new Date(), target=new Date(); target.setMonth(target.getMonth()+8);
+      const {error:je} = await sb.from('schedule_docs').insert({
+        id:'job:'+jid, payload:{list,state}, updated_at:new Date().toISOString()});
+      if (je) throw je;
+      jobs.push({bl:patch.block+'/'+patch.lot, id:jid, wip:{}, crew:src.crew||{}, fail:{},
+        kind:'standard', name: l.address || ('Block '+patch.block+' Lot '+patch.lot),
+        town: patch.township||'', start: iso(start), target: iso(target), through:null});
+      const {error:ue} = await sb.from('schedule_docs')
+        .update({payload:{...meta.payload, jobs, uid}, updated_at:new Date().toISOString()})
+        .eq('id','meta');
+      if (ue) throw ue;
+      patch.field_desk_job_id = jid;
+      notes.push('Field Desk job created \u2014 '+list.length+' tasks copied from '+src.name);
+    }catch(e){ notes.push('Field Desk job FAILED: '+e.message) }
+  }
+  return notes;
+}
+
 async function saveLot(){
   const msg=document.getElementById('dMsg');
   const patch={};
@@ -521,6 +604,13 @@ async function saveLot(){
     msg.className='err'; return; }
   msg.className=''; msg.textContent='Saving…';
   patch.updated_at=new Date().toISOString();
+  let notes=[];
+  if (patch.ready_to_build && !(editing.permit_package_id && editing.field_desk_job_id)){
+    if (!editing.ready_to_build_date)
+      patch.ready_to_build_date=new Date().toISOString().slice(0,10);
+    msg.textContent='Creating permit package and Field Desk job…';
+    notes = await handoff(editing, patch);
+  }
   let res;
   if (editing.id) res = await sb.from('variance_lots').update(patch).eq('id',editing.id).select();
   else res = await sb.from('variance_lots').insert(patch).select();
@@ -528,7 +618,12 @@ async function saveLot(){
   const row=res.data[0];
   const i=LOTS.findIndex(x=>x.id===row.id);
   if (i>=0) LOTS[i]=row; else LOTS.push(row);
-  render(); closeDrawer();
+  render();
+  if (notes.length){ openLot(row.id);
+    const m=document.getElementById('dMsg');
+    m.textContent=notes.join(' · ');
+    m.className = notes.some(n=>n.includes('FAILED')) ? 'err' : '';
+  } else closeDrawer();
 }
 
 /* ---------- load ---------- */
