@@ -246,6 +246,10 @@ const STAGES = [
 ];
 
 const OPTS = {
+  survey_complete:['','No','Yes'],
+  engineering_plan_done:['','No','Yes'],
+  internal_review_done:['','No','Yes'],
+  variance_submitted:['','No','Yes'],
   variance_approval:['Not Yet Heard','Approved','Denied','Carried'],
   resolution_status:['Not Received','Received','Signed Copy Received'],
   test_pits:['','No','Scheduled','Yes'],
@@ -271,7 +275,10 @@ function countyDone(l){
 }
 function stageOf(l){
   let s = l.pds_phase ? Math.min(l.pds_phase,4) : 0;
-  if (l.pds_phase===5 || l.variance_submitted_date) s = Math.max(s,5);
+  if (l.survey_complete==='Yes') s = Math.max(s,1);
+  if (l.engineering_plan_done==='Yes') s = Math.max(s,3);
+  if (l.internal_review_done==='Yes') s = Math.max(s,4);
+  if (l.pds_phase===5 || l.variance_submitted==='Yes' || l.variance_submitted_date) s = Math.max(s,5);
   if (l.hearing_date) s = Math.max(s,6);
   if (l.variance_approval==='Approved') s = Math.max(s,7);
   if (l.resolution_status==='Signed Copy Received') s = Math.max(s,8);
@@ -470,10 +477,14 @@ function openLot(id){
       ${field(l,'overall_status','Status')}${field(l,'pds_phase','PDS phase (1-5)','number')}
     </div></fieldset>
     <fieldset><legend>Engineering and submission</legend><div class="grid">
-      ${field(l,'survey_complete_date','Survey complete','date')}
-      ${field(l,'engineering_plan_date','Plan drawn','date')}
-      ${field(l,'internal_review_date','Internal review','date')}
-      ${field(l,'variance_submitted_date','Variance submitted','date')}
+      ${field(l,'survey_complete','Survey complete')}
+      ${field(l,'survey_note','Survey notes')}
+      ${field(l,'engineering_plan_done','Plan drawn')}
+      ${field(l,'engineering_note','Plan notes')}
+      ${field(l,'internal_review_done','Internal review')}
+      ${field(l,'internal_review_note','Review notes')}
+      ${field(l,'variance_submitted','Variance submitted')}
+      ${field(l,'variance_submitted_note','Submission notes')}
     </div></fieldset>
     <fieldset><legend>Hearing and resolution</legend><div class="grid">
       ${field(l,'hearing_date','Hearing date','date')}
