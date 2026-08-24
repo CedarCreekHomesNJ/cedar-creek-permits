@@ -343,18 +343,25 @@ function stalls(l){
   if (l.variance_approval==='Carried' && (!l.hearing_date || new Date(l.hearing_date)<t))
     out.push({sev:'bad',why:'Carried with no new hearing date',days:null});
 
-  if (l.ocscd_status==='Application & Check Mailed'){
-    if (l.ocscd_date && age(l.ocscd_date)>WAIT.ocscd)
-      out.push({sev:'bad',why:'OCSCD mailed, nothing back',days:age(l.ocscd_date)});
-    else if (!l.ocscd_date)
-      out.push({sev:'warn',why:'OCSCD mailed — no date recorded',days:null});
-  }
-  if (l.twa_status==='Mailed' || l.twa_status==='Requested'){
-    if (l.twa_date && age(l.twa_date)>WAIT.twa)
-      out.push({sev:'bad',why:'TWA sent, nothing back',days:age(l.twa_date)});
-    else if (!l.twa_date)
-      out.push({sev:'warn',why:'TWA sent — no date recorded',days:null});
-  }
+  /* county touch points: not Approved (pits: not Yes) after 30 days -> check on it */
+  const CWAIT=30;
+  const inMotion={test_pits:['Scheduled'],twa:['Requested','Mailed'],
+                  ochd:[],ocscd:['Application & Check Mailed']};
+  const critical = l.variance_approval==='Approved';
+  const touched=l.county_touched||{};
+  [['test_pits',l.test_pits,'Yes','Test pits',l.test_pits_date],
+   ['twa',l.twa_status,'Approved','TWA',l.twa_date],
+   ['ochd',l.ochd_status,'Approved','OCHD',l.ochd_date],
+   ['ocscd',l.ocscd_status,'Approved','OCSCD',l.ocscd_date]].forEach(([k,v,done,label,dt])=>{
+    if (v===done) return;
+    if (k==='twa' && v==='Not needed') return;
+    const moving = inMotion[k].includes(v);
+    if (!critical && !moving) return;
+    const basis = dt || touched[k];
+    const days = basis ? age(basis) : null;
+    if (days!==null && days>CWAIT)
+      out.push({sev:'bad',why:'Check on '+label+' — '+(v||'not started')+' for '+days+' days',days});
+  });
   if (l.variance_approval==='Approved' && l.variance_approval_date
       && l.resolution_status!=='Signed Copy Received'
       && age(l.variance_approval_date)>WAIT.resolution)
@@ -367,10 +374,6 @@ function stalls(l){
     else if (!basis)
       out.push({sev:'warn',why:'Requirements met, plans not ordered',days:null});
   }
-  if (l.ochd_status!=='Approved' && l.test_pits==='No'
-      && l.resolution_status==='Signed Copy Received')
-    out.push({sev:'warn',why:'At OCHD with no test pits done',days:null});
-
   return out;
 }
 
@@ -633,6 +636,13 @@ async function saveLot(){
   if (!patch.block || !patch.lot){ msg.textContent='Block and lot are both required.';
     msg.className='err'; return; }
   msg.className=''; msg.textContent='Saving…';
+  const CK={test_pits:'test_pits',twa_status:'twa',ochd_status:'ochd',ocscd_status:'ocscd'};
+  const stamps={...(editing.county_touched||{})};
+  let stamped=false;
+  Object.entries(CK).forEach(([f,k])=>{
+    if ((patch[f]??null)!==(editing[f]??null)){ stamps[k]=new Date().toISOString().slice(0,10); stamped=true; }
+  });
+  if (stamped || !editing.county_touched) patch.county_touched=stamps;
   patch.updated_at=new Date().toISOString();
   let notes=[];
   if (patch.ready_to_build && !(editing.permit_package_id && editing.field_desk_job_id)){
