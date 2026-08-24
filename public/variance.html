@@ -169,6 +169,11 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
   </div>
 
   <div class="card">
+    <h2>PDS worklist <span class="count" id="pdsCount">0</span></h2>
+    <ul class="attn" id="pdsList"></ul>
+  </div>
+
+  <div class="card">
     <h2>Variance Phase</h2>
     <div class="stages" id="stageStrip"></div>
   </div>
@@ -195,7 +200,7 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
     <div class="tbl-scroll">
       <table>
         <thead><tr>
-          <th>Block / lot</th><th>Township</th><th>Stage</th><th>Progress</th>
+          <th>Block / lot</th><th>PDS #</th><th>Township</th><th>Stage</th><th>Progress</th>
           <th>What's next</th><th>Flag</th><th>Manager</th>
         </tr></thead>
         <tbody id="rows"></tbody>
@@ -392,12 +397,12 @@ function render(){
     if (filterStage!==null && stageOf(l)!==filterStage) return false;
     if (filterPits!==null && pitBucket(l)!==filterPits) return false;
     if (q){
-      const hay=[l.block,l.lot,l.address,l.notes,l.township,l.project_manager]
+      const hay=[l.block,l.lot,l.address,l.notes,l.township,l.project_manager,l.pds_number]
         .join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
-  }).sort((a,b)=>stageOf(a)-stageOf(b) || String(a.block).localeCompare(String(b.block)));
+  }).sort((a,b)=>(a.pds_priority??1e9)-(b.pds_priority??1e9) || stageOf(a)-stageOf(b) || String(a.block).localeCompare(String(b.block)));
 
   /* attention list — open lots only, worst first */
   const flagged=[];
@@ -415,6 +420,18 @@ function render(){
       <span class="age">${f.s.days!==null?f.s.days+' days':''}</span>
     </li>`).join('')
     : '<li class="empty">Nothing stalled. Every open lot is moving.</li>';
+
+  /* PDS worklist: ranked lots PDS still has to finish, in your order */
+  const pds = LOTS.filter(l=>l.pds_priority && l.overall_status!=='Closed' && stageOf(l)<5)
+    .sort((a,b)=>a.pds_priority-b.pds_priority || String(a.block).localeCompare(String(b.block)));
+  document.getElementById('pdsCount').textContent=pds.length;
+  document.getElementById('pdsList').innerHTML = pds.length ? pds.map(l=>`
+    <li data-id="${l.id}">
+      <span class="pill p-neutral">#${l.pds_priority}</span>
+      <span class="id">${esc(lotName(l))}${l.pds_number?' · '+esc(l.pds_number):''}</span>
+      <span class="why">${esc(STAGES[stageOf(l)])} — ${esc(nextAction(l))}</span>
+    </li>`).join('')
+    : '<li class="empty">No priorities set. Give a lot a PDS priority number and it shows up here until PDS finishes it.</li>';
 
   /* stage strip */
   const counts={};
@@ -436,7 +453,8 @@ function render(){
     const s=stageOf(l), sl=stalls(l);
     const worst = sl.some(x=>x.sev==='bad') ? 'p-bad' : sl.length ? 'p-warn' : '';
     return `<tr data-id="${l.id}">
-      <td class="lotid">${esc(l.block)} / ${esc(l.lot)}${l.address?'<br><span style="font-weight:400;color:var(--muted)">'+esc(l.address)+'</span>':''}</td>
+      <td class="lotid">${esc(l.block)} / ${esc(l.lot)}${l.pds_priority?' <span class="pill p-neutral">P'+l.pds_priority+'</span>':''}${l.address?'<br><span style="font-weight:400;color:var(--muted)">'+esc(l.address)+'</span>':''}</td>
+      <td>${esc(l.pds_number||'—')}</td>
       <td>${esc(l.township||'—')}</td>
       <td>${esc(STAGES[s])}</td>
       <td><span class="bar"><i style="width:${Math.round(s/13*100)}%"></i></span></td>
@@ -444,7 +462,7 @@ function render(){
       <td>${sl.length?`<span class="pill ${worst}">${sl.length}</span>`:''}</td>
       <td>${esc(l.project_manager||'—')}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="7" class="empty">No lots match these filters.</td></tr>';
+  }).join('') || '<tr><td colspan="8" class="empty">No lots match these filters.</td></tr>';
 }
 
 /* ---------- drawer ---------- */
@@ -475,6 +493,7 @@ function openLot(id){
       ${field(l,'address','Address')}${field(l,'township','Township')}
       ${field(l,'project_manager','Project manager')}${field(l,'sell_build','Sell or build')}
       ${field(l,'overall_status','Status')}${field(l,'pds_phase','PDS phase (1-5)','number')}
+      ${field(l,'pds_number','PDS #')}${field(l,'pds_priority','PDS priority (1 = first)','number')}
     </div></fieldset>
     <fieldset><legend>Engineering and submission</legend><div class="grid">
       ${field(l,'survey_complete','Survey complete')}
@@ -676,6 +695,9 @@ document.getElementById('rows').onclick=e=>{
   const tr=e.target.closest('tr[data-id]'); if(tr) openLot(tr.dataset.id);
 };
 document.getElementById('stallList').onclick=e=>{
+  const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
+};
+document.getElementById('pdsList').onclick=e=>{
   const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
 };
 document.getElementById('addLot').onclick=()=>openLot(null);
