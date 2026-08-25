@@ -222,6 +222,7 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
   <div class="dfoot">
     <button class="btn" id="dSave">Save changes</button>
     <button class="btn btn-plain" id="dCancel">Cancel</button>
+    <button class="btn btn-plain" id="dEmail">Generate email</button>
     <span class="spacer" style="flex:1"></span>
     <span id="dMsg" style="font-size:13px;color:var(--muted)"></span>
   </div>
@@ -251,10 +252,10 @@ const STAGES = [
 ];
 
 const OPTS = {
-  survey_complete:['','No','Yes'],
-  engineering_plan_done:['','No','Yes'],
-  internal_review_done:['','No','Yes'],
-  variance_submitted:['','No','Yes'],
+  survey_complete:['','Not Started','In-Progress','Complete'],
+  engineering_plan_done:['','Not Started','In-Progress','Complete'],
+  internal_review_done:['','Not Started','In-Progress','Complete'],
+  variance_submitted:['','Not Started','In-Progress','Complete'],
   variance_approval:['Not Yet Heard','Approved','Denied','Carried'],
   resolution_status:['Not Received','Received','Signed Copy Received'],
   test_pits:['','No','Scheduled','Yes'],
@@ -280,10 +281,12 @@ function countyDone(l){
 }
 function stageOf(l){
   let s = l.pds_phase ? Math.min(l.pds_phase,4) : 0;
-  if (l.survey_complete==='Yes') s = Math.max(s,1);
-  if (l.engineering_plan_done==='Yes') s = Math.max(s,3);
-  if (l.internal_review_done==='Yes') s = Math.max(s,4);
-  if (l.pds_phase===5 || l.variance_submitted==='Yes' || l.variance_submitted_date) s = Math.max(s,5);
+  const done=v=>v==='Complete'||v==='Yes';
+  if (done(l.survey_complete)) s = Math.max(s,1);
+  if (l.engineering_plan_done==='In-Progress') s = Math.max(s,2);
+  if (done(l.engineering_plan_done)) s = Math.max(s,3);
+  if (done(l.internal_review_done)) s = Math.max(s,4);
+  if (l.pds_phase===5 || done(l.variance_submitted) || l.variance_submitted_date) s = Math.max(s,5);
   if (l.hearing_date) s = Math.max(s,6);
   if (l.variance_approval==='Approved') s = Math.max(s,7);
   if (l.resolution_status==='Signed Copy Received') s = Math.max(s,8);
@@ -715,6 +718,11 @@ document.getElementById('dClose').onclick=closeDrawer;
 document.getElementById('dCancel').onclick=closeDrawer;
 document.getElementById('scrim').onclick=closeDrawer;
 document.getElementById('dSave').onclick=saveLot;
+document.getElementById('dEmail').onclick=()=>{
+  const g=k=>{const el=document.querySelector('#dBody [data-k="'+k+'"]');return el?String(el.value||'').trim():''};
+  const subj='Block '+g('block')+' Lot '+g('lot')+(g('pds_number')?' - PDS# '+g('pds_number'):'');
+  location.href='mailto:?subject='+encodeURIComponent(subj);
+};
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDrawer() });
 
 document.getElementById('sendLink').onclick=async()=>{
