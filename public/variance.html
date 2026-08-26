@@ -671,6 +671,17 @@ async function saveLot(){
   else res = await sb.from('variance_lots').insert(patch).select();
   if (res.error){ msg.textContent=res.error.message; msg.className='err'; return; }
   const row=res.data[0];
+  /* newly added to the PDS priority list -> pop a team email */
+  if (row.pds_priority && !editing.pds_priority){
+    const TEAM='bstevens@pds-nj.com,ahmet.cedarcreek@outlook.com,Kevin.cedarcreek@outlook.com,jeffjerman@msn.com';
+    const subj='PDS priority: '+lotName(row)+' \u2014 #'+row.pds_priority;
+    const body='Added to the PDS worklist at priority #'+row.pds_priority+'.\n\n'
+      +(row.address?'Address: '+row.address+'\n':'')
+      +(row.pds_number?'PDS #: '+row.pds_number+'\n':'')
+      +'Phase: '+STAGES[stageOf(row)]+'\n'
+      +(row.township?'Township: '+row.township+'\n':'');
+    location.href='mailto:'+TEAM+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+  }
   const i=LOTS.findIndex(x=>x.id===row.id);
   if (i>=0) LOTS[i]=row; else LOTS.push(row);
   render();
