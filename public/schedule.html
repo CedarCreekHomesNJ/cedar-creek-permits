@@ -1310,6 +1310,8 @@ function warrantyModal(jobId, justClosed){
 }
 
 /* ===== per-job document repository ===== */
+const DOC_TEMPLATE=['Architecture','Deed Documents','Inspection Documents','Utility Documents',
+  'Engineering Documents','OCHD','OCSCD','Permit Documents','TWA','Warranty Documents'];
 function docsModal(jobId){
   const job=JOBS.find(j=>j.id===jobId); if(!job) return;
   DOCS[jobId]=DOCS[jobId]||[];
@@ -1335,6 +1337,14 @@ function docsModal(jobId){
       <div><div class="t">Documents</div><div class="s">${esc(job.name)}</div></div>
       <button class="m-x" data-close aria-label="Close">&times;</button></div>
     <div class="m-b">
+      ${F.length===0?`<div id="stdPick" style="border:1px solid var(--border);border-radius:8px;padding:13px 14px;margin-bottom:16px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:9px">Start from the standard folder set</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:11px">
+          ${DOC_TEMPLATE.map((n,i)=>`<label style="display:flex;align-items:center;gap:5px;border:1px solid var(--border);
+            border-radius:6px;padding:5px 10px;font-size:12.5px;cursor:pointer">
+            <input type="checkbox" data-std="${i}" checked>${esc(n)}</label>`).join('')}</div>
+        <button class="btn brand" id="stdCreate">Create Selected Folders</button>
+        <span class="help" style="margin-left:6px">Or skip this and add folders one at a time below.</span></div>`:''}
       <div style="display:flex;gap:8px;margin-bottom:14px">
         <input id="nfName" placeholder='New folder \u2014 e.g. "Architectural Plans"'
           style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font:inherit">
@@ -1347,6 +1357,7 @@ function docsModal(jobId){
     const list=node.querySelector('#docList'), fileI=node.querySelector('#docFile');
     let upTarget=null;
     const draw=()=>{ list.innerHTML=rowsHtml();
+      if(F.length){ const sp=node.querySelector('#stdPick'); if(sp) sp.remove(); }
       list.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{
         if(!db){alert('Documents need the online database \u2014 sign in first.');return}
         upTarget=+b.dataset.up; fileI.click();});
@@ -1363,6 +1374,14 @@ function docsModal(jobId){
         F[fi].files.splice(di,1); draw(); persist(jobId);
         if(db) db.storage.from('job-docs').remove([d.p]).then(()=>{},()=>{});});
     };
+    const stdBtn=node.querySelector('#stdCreate');
+    if(stdBtn) stdBtn.onclick=()=>{
+      const chosen=[...node.querySelectorAll('[data-std]:checked')]
+        .map(c=>DOC_TEMPLATE[+c.dataset.std])
+        .filter(n=>!F.some(f=>f.name.toLowerCase()===n.toLowerCase()));
+      if(!chosen.length){alert('Pick at least one folder, or add one manually below.');return}
+      chosen.forEach(n=>F.push({name:n,files:[]}));
+      persist(jobId); draw();};
     node.querySelector('#nfAdd').onclick=()=>{
       const inp=node.querySelector('#nfName'), name=inp.value.trim();
       if(!name){inp.focus();return}
