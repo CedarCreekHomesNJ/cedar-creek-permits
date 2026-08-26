@@ -277,7 +277,7 @@ const OPTS = {
   overall_status:['Open','Closed']
 };
 
-let LOTS=[], filterStage=null, filterPits=null;
+let LOTS=[], filterStage=new Set(), filterPits=new Set();
 const PITS=['Done','Scheduled','Not done','Not recorded'];
 function pitBucket(l){ const v=l.test_pits;
   return v==='Yes'?'Done':v==='Scheduled'?'Scheduled':v==='No'?'Not done':'Not recorded' }
@@ -394,7 +394,7 @@ function stalls(l){
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}
 function fmt(d){ if(!d) return '—';
   const [y,m,dd]=d.split('-'); return `${+m}/${+dd}/${y.slice(2)}` }
-function lotName(l){ return `Block ${l.block} · Lot ${l.lot}` }
+function lotName(l){ return (l.block&&l.lot) ? `Block ${l.block} · Lot ${l.lot}` : (l.address||'No block/lot yet') }
 function esc(s){ return (s??'').toString()
   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
 
@@ -410,8 +410,8 @@ function render(){
     if (st && l.overall_status!==st) return false;
     if (tw && l.township!==tw) return false;
     if (pm && l.project_manager!==pm) return false;
-    if (filterStage!==null && stageOf(l)!==filterStage) return false;
-    if (filterPits!==null && pitBucket(l)!==filterPits) return false;
+    if (filterStage.size && !filterStage.has(stageOf(l))) return false;
+    if (filterPits.size && !filterPits.has(pitBucket(l))) return false;
     if (q){
       const hay=[l.block,l.lot,l.address,l.notes,l.township,l.project_manager,l.pds_number]
         .join(' ').toLowerCase();
@@ -444,7 +444,7 @@ function render(){
   document.getElementById('pdsList').innerHTML = pds.length ? pds.map(l=>`
     <li data-id="${l.id}">
       <span class="pill p-neutral">#${l.pds_priority}</span>
-      <span class="id">${esc(lotName(l))}${l.pds_number?' · '+esc(l.pds_number):''}</span>
+      <span class="id">${esc(lotName(l))}${(l.block&&l.lot&&l.address)?' · '+esc(l.address):''}${l.pds_number?' · '+esc(l.pds_number):''}</span>
       <span class="why">${esc(STAGES[stageOf(l)])} — ${esc(nextAction(l))}</span>
     </li>`).join('')
     : '<li class="empty">No priorities set. Give a lot a PDS priority number and it shows up here until PDS finishes it.</li>';
@@ -453,13 +453,13 @@ function render(){
   const counts={};
   scope.forEach(l=>{ const s=stageOf(l); counts[s]=(counts[s]||0)+1 });
   document.getElementById('stageStrip').innerHTML = STAGES.map((label,i)=>
-    counts[i] ? `<button class="stage ${filterStage===i?'on':''}" data-stage="${i}">
+    counts[i] ? `<button class="stage ${filterStage.has(i)?'on':''}" data-stage="${i}">
       <span class="n">${counts[i]}</span><span class="l">${esc(label)}</span></button>` : ''
   ).join('');
 
   document.getElementById('pitStrip').innerHTML = PITS.map(b=>{
     const n=scope.filter(l=>pitBucket(l)===b).length;
-    return n ? `<button class="stage ${filterPits===b?'on':''}" data-pit="${b}">
+    return n ? `<button class="stage ${filterPits.has(b)?'on':''}" data-pit="${b}">
       <span class="n">${n}</span><span class="l">${b}</span></button>` : '';
   }).join('') || '<span class="empty">No lots.</span>';
 
@@ -469,7 +469,7 @@ function render(){
     const s=stageOf(l), sl=stalls(l);
     const worst = sl.some(x=>x.sev==='bad') ? 'p-bad' : sl.length ? 'p-warn' : '';
     return `<tr data-id="${l.id}">
-      <td class="lotid">${esc(l.block)} / ${esc(l.lot)}${l.pds_priority?' <span class="pill p-neutral">P'+l.pds_priority+'</span>':''}${l.address?'<br><span style="font-weight:400;color:var(--muted)">'+esc(l.address)+'</span>':''}</td>
+      <td class="lotid">${(l.block||l.lot)?esc(l.block||'—')+' / '+esc(l.lot||'—'):'<span style="color:var(--muted)">TBD</span>'}${l.pds_priority?' <span class="pill p-neutral">P'+l.pds_priority+'</span>':''}${l.address?'<br><span style="font-weight:400;color:var(--muted)">'+esc(l.address)+'</span>':''}</td>
       <td>${esc(l.pds_number||'—')}</td>
       <td>${esc(l.township||'—')}</td>
       <td>${esc(STAGES[s])}</td>
@@ -582,8 +582,9 @@ function closeDrawer(){
 /* ---------- ready to build: push to permits + field desk ---------- */
 async function handoff(l, patch){
   const notes=[];
-  const label = l.address ? l.address+' (B '+patch.block+' / L '+patch.lot+')'
-                          : 'Block '+patch.block+' Lot '+patch.lot;
+  const hasBL = patch.block && patch.lot;
+  const label = l.address ? l.address+(hasBL?' (B '+patch.block+' / L '+patch.lot+')':'')
+                          : (hasBL ? 'Block '+patch.block+' Lot '+patch.lot : 'New project');
   const iso = d => d.toISOString().slice(0,10);
 
   if (!l.permit_package_id){
@@ -623,8 +624,8 @@ async function handoff(l, patch){
       const {error:je} = await sb.from('schedule_docs').insert({
         id:'job:'+jid, payload:{list,state}, updated_at:new Date().toISOString()});
       if (je) throw je;
-      jobs.push({bl:patch.block+'/'+patch.lot, id:jid, wip:{}, crew:src.crew||{}, fail:{},
-        kind:'standard', name: l.address || ('Block '+patch.block+' Lot '+patch.lot),
+      jobs.push({bl:hasBL?patch.block+'/'+patch.lot:'\u2014', id:jid, wip:{}, crew:src.crew||{}, fail:{},
+        kind:'standard', name: l.address || (hasBL?('Block '+patch.block+' Lot '+patch.lot):'New project'),
         town: patch.township||'', start: iso(start), target: iso(target), through:null});
       const {error:ue} = await sb.from('schedule_docs')
         .update({payload:{...meta.payload, jobs, uid}, updated_at:new Date().toISOString()})
@@ -646,7 +647,8 @@ async function saveLot(){
     else if (el.type==='number') patch[k]= el.value===''?null:Number(el.value);
     else patch[k]= el.value===''?null:el.value;
   });
-  if (!patch.block || !patch.lot){ msg.textContent='Block and lot are both required.';
+  if ((!patch.block || !patch.lot) && !patch.address){
+    msg.textContent='Give it a block and lot, or at least an address to find it by.';
     msg.className='err'; return; }
   msg.className=''; msg.textContent='Saving…';
   const CK={test_pits:'test_pits',twa_status:'twa',ochd_status:'ochd',ocscd_status:'ocscd'};
@@ -704,15 +706,15 @@ document.getElementById('clearF').onclick=()=>{
   document.getElementById('fTownship').value='';
   document.getElementById('fPm').value='';
   document.getElementById('fStatus').value='Open';
-  filterStage=null; filterPits=null; render();
+  filterStage.clear(); filterPits.clear(); render();
 };
 document.getElementById('stageStrip').onclick=e=>{
   const b=e.target.closest('.stage'); if(!b) return;
-  const s=+b.dataset.stage; filterStage = filterStage===s ? null : s; render();
+  const s=+b.dataset.stage; filterStage.has(s)?filterStage.delete(s):filterStage.add(s); render();
 };
 document.getElementById('pitStrip').onclick=e=>{
   const b=e.target.closest('.stage'); if(!b) return;
-  filterPits = filterPits===b.dataset.pit ? null : b.dataset.pit; render();
+  const v=b.dataset.pit; filterPits.has(v)?filterPits.delete(v):filterPits.add(v); render();
 };
 document.getElementById('rows').onclick=e=>{
   const tr=e.target.closest('tr[data-id]'); if(tr) openLot(tr.dataset.id);
