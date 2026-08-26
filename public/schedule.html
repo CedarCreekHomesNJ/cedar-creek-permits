@@ -546,7 +546,7 @@ let JOBS = [
  {id:'regency',name:'36 Regency Way',town:'Monmouth Cty',bl:'—',start:'2026-08-15',target:'2027-08-15',kind:'demo',
   through:null,wip:{}}
 ];
-const LIST={}, STATE={};
+const LIST={}, STATE={}, DOCS={};
 function instantiate(j){
   LIST[j.id]=tpl(j.kind);
   const m={}, cut=j.through? LIST[j.id].findIndex(t=>t.id===j.through) : -1;
@@ -918,6 +918,7 @@ function vJobs(){
       <button class="btn ${filter==='done'?'on':''}" data-f="done">Complete (${nDone})</button>
       ${nNa?`<button class="btn ${filter==='na'?'on':''}" data-f="na">Not applicable (${nNa})</button>`:''}
       <button class="btn ${filter==='all'?'on':''}" data-f="all">All (${P.list.length})</button>
+      <button class="btn" id="jobDocs">Documents${(DOCS[P.job.id]||[]).length?' ('+DOCS[P.job.id].length+')':''}</button>
       <input id="jq" placeholder="Find a task or contractor" value="${esc(query)}" style="width:220px">
       <span class="sp" style="flex:1"></span>
       <button class="btn" id="newTask">Add Task</button>
@@ -1207,6 +1208,87 @@ function editor(jobId,tid){
   });
 }
 
+
+/* ===== per-job document repository ===== */
+function docsModal(jobId){
+  const job=JOBS.find(j=>j.id===jobId); if(!job) return;
+  DOCS[jobId]=DOCS[jobId]||[];
+  const F=DOCS[jobId];
+  const url=pt=>db?db.storage.from('job-docs').getPublicUrl(pt).data.publicUrl:'#';
+  const rowsHtml=()=>F.map((f,fi)=>`
+    <div style="border:1px solid var(--border);border-radius:8px;padding:11px 13px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <b style="flex:1;font-size:13.5px">${esc(f.name)}</b>
+        <button class="btn" data-up="${fi}">Add Files</button>
+        <button class="btn danger" data-delf="${fi}">Delete Folder</button></div>
+      ${f.files.length?f.files.map((d,di)=>`
+        <div style="display:flex;align-items:center;gap:9px;margin-top:8px;font-size:13px">
+          <a href="${url(d.p)}" target="_blank" rel="noopener" style="flex:1;overflow-wrap:anywhere">${esc(d.name)}</a>
+          <span style="color:var(--text-3);font-size:11.5px;white-space:nowrap">${d.on||''}</span>
+          <button class="m-x" data-deld="${fi}|${di}" title="Remove" style="position:static;font-size:15px">&times;</button>
+        </div>`).join('')
+      :'<div style="color:var(--text-3);font-size:12px;margin-top:7px">No documents in this folder yet.</div>'}
+    </div>`).join('')
+    ||'<div style="color:var(--text-3);font-size:13px">No folders yet. Name one above \u2014 e.g. "Architectural Plans" \u2014 and load its documents.</div>';
+  modal(`<div class="modal" role="dialog" aria-modal="true" aria-label="Documents">
+    <div class="m-h">${tile('home','var(--brand)')}
+      <div><div class="t">Documents</div><div class="s">${esc(job.name)}</div></div>
+      <button class="m-x" data-close aria-label="Close">&times;</button></div>
+    <div class="m-b">
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <input id="nfName" placeholder='New folder \u2014 e.g. "Architectural Plans"'
+          style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font:inherit">
+        <button class="btn brand" id="nfAdd">Create Folder</button></div>
+      <div id="docList"></div>
+      <input type="file" id="docFile" multiple hidden>
+    </div>
+    <div class="m-f"><span class="sp"></span><button class="btn brand" data-close>Done</button></div></div>`,
+  (node)=>{
+    const list=node.querySelector('#docList'), fileI=node.querySelector('#docFile');
+    let upTarget=null;
+    const draw=()=>{ list.innerHTML=rowsHtml();
+      list.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{
+        if(!db){alert('Documents need the online database \u2014 sign in first.');return}
+        upTarget=+b.dataset.up; fileI.click();});
+      list.querySelectorAll('[data-delf]').forEach(b=>b.onclick=async()=>{
+        const fi=+b.dataset.delf, f=F[fi];
+        if(!confirm('Delete the folder "'+f.name+'"'+(f.files.length?' and its '+f.files.length+' document(s)':'')+'? This cannot be undone.')) return;
+        const paths=f.files.map(d=>d.p);
+        F.splice(fi,1); draw(); persist(jobId);
+        if(db&&paths.length) db.storage.from('job-docs').remove(paths).then(()=>{},()=>{});});
+      list.querySelectorAll('[data-deld]').forEach(b=>b.onclick=async()=>{
+        const [fi,di]=b.dataset.deld.split('|').map(Number);
+        const d=F[fi].files[di];
+        if(!confirm('Remove "'+d.name+'"?')) return;
+        F[fi].files.splice(di,1); draw(); persist(jobId);
+        if(db) db.storage.from('job-docs').remove([d.p]).then(()=>{},()=>{});});
+    };
+    node.querySelector('#nfAdd').onclick=()=>{
+      const inp=node.querySelector('#nfName'), name=inp.value.trim();
+      if(!name){inp.focus();return}
+      if(F.some(f=>f.name.toLowerCase()===name.toLowerCase())){alert('That folder already exists.');return}
+      F.push({name,files:[]}); inp.value=''; draw(); persist(jobId);};
+    fileI.onchange=async()=>{
+      const files=[...fileI.files]; fileI.value='';
+      if(upTarget===null||!files.length) return;
+      const fi=upTarget; upTarget=null;
+      for(let n=0;n<files.length;n++){
+        const f=files[n];
+        if(f.size>50*1024*1024){alert('"'+f.name+'" is over 50MB \u2014 too big to store here.');continue}
+        const safe=f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        const path=jobId+'/'+fi+'-'+Date.now()+'-'+n+'-'+safe;
+        try{
+          const {error}=await db.storage.from('job-docs').upload(path,f,{contentType:f.type||'application/octet-stream'});
+          if(error) throw new Error(error.message);
+          F[fi].files.push({p:path,name:f.name,on:iso(TODAY)});
+          draw(); persist(jobId);
+        }catch(err){alert('"'+f.name+'" did not upload: '+err.message)}
+      }
+    };
+    draw();
+  });
+}
+
 function addTask(jobId,anchorId,phaseName){
   const P=PLAN.find(p=>p.job.id===jobId), list=P.list;
   let anchor;
@@ -1335,7 +1417,7 @@ function addJob(existingId){
       if(!confirm('Delete "'+E.name+'"? Its tasks, dates and notes go with it. This cannot be undone.')) return;
       const gone=E.id;
       const gi=JOBS.findIndex(j=>j.id===gone); if(gi>=0) JOBS.splice(gi,1);
-      delete LIST[gone]; delete STATE[gone];
+      delete LIST[gone]; delete STATE[gone]; delete DOCS[gone];
       pending.delete('job:'+gone);
       close();
       if(jobTab===gone) jobTab=null;
@@ -1386,6 +1468,7 @@ function render(v){
   const bind=(id,fn)=>{const b=host.querySelector('#'+id);if(b)b.onclick=fn};
   bind('clr',()=>{sel=null;render('today')});
   host.querySelectorAll('[data-f]').forEach(n=>n.onclick=()=>{filter=n.dataset.f;render('jobs')});
+  const jd=host.querySelector('#jobDocs'); if(jd) jd.onclick=()=>docsModal(jobTab);
   host.querySelectorAll('[data-addph]').forEach(n=>n.onclick=e=>{
     e.stopPropagation(); addTask(jobTab,null,n.dataset.addph)});
   const jq=host.querySelector('#jq');
@@ -1423,7 +1506,7 @@ let db=null, saveTimer=null, pending=new Set(), lastSaved=null;
 const setSync=(txt,cls='')=>{const n=document.getElementById('syncState');
   if(n){n.textContent=txt;n.className='badge '+cls}};
 
-const docJob = id => ({list:LIST[id], state:STATE[id]});
+const docJob = id => ({list:LIST[id], state:STATE[id], docs:DOCS[id]||[]});
 const docMeta = () => ({jobs:JOBS, roster:ROSTER, settings:SETTINGS, uid:UID});
 
 function persist(jobId){
@@ -1466,7 +1549,7 @@ async function loadAll(){
   Object.keys(STATE).forEach(k=>delete STATE[k]);
   data.filter(r=>r.id.startsWith('job:')).forEach(r=>{
     const id=r.id.slice(4);
-    if(r.payload&&r.payload.list&&r.payload.state){LIST[id]=r.payload.list;STATE[id]=r.payload.state}
+    if(r.payload&&r.payload.list&&r.payload.state){LIST[id]=r.payload.list;STATE[id]=r.payload.state;DOCS[id]=r.payload.docs||[]}
   });
   JOBS.forEach(j=>{if(!LIST[j.id]) instantiate(j)});   // a job saved before its tasks
   return 'loaded';
@@ -1497,7 +1580,7 @@ function loginScreen(msg){
 
 /* ---------- backup export / import (unchanged behaviour) ---------- */
 document.getElementById('save').onclick=()=>{
-  const payload={v:3,jobs:JOBS,list:LIST,state:STATE,settings:SETTINGS,roster:ROSTER};
+  const payload={v:3,jobs:JOBS,list:LIST,state:STATE,docs:DOCS,settings:SETTINGS,roster:ROSTER};
   const blob=new Blob([JSON.stringify(payload,null,1)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='cedar-creek-status-'+iso(new Date())+'.json';a.click();URL.revokeObjectURL(a.href)};
@@ -1512,6 +1595,7 @@ document.getElementById('file').onchange=e=>{
     if(j.jobs&&j.list&&j.state){
       JOBS=j.jobs; Object.keys(LIST).forEach(k=>delete LIST[k]); Object.keys(STATE).forEach(k=>delete STATE[k]);
       Object.assign(LIST,j.list); Object.assign(STATE,j.state);
+      Object.keys(DOCS).forEach(k=>delete DOCS[k]); Object.assign(DOCS,j.docs||{});
     }
     jobTab=JOBS[0].id; recompute(); render(view); JOBS.forEach(x=>persist(x.id));
   }catch(err){alert('That file could not be read as a saved status file.')}};
