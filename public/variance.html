@@ -3,6 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Cedar Creek">
+<meta name="theme-color" content="#014486">
 <title>Variance Tracker — Cedar Creek</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/config.js"></script>
@@ -144,16 +152,18 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
 
 <div id="authView" class="auth hidden">
   <h2>Variance tracker</h2>
-  <p>Sign in with your email. We'll send a link — no password.</p>
+  <p>Sign in with your email and password. First time here? Use the email link, then set a password from inside the app.</p>
   <input type="email" id="email" placeholder="you@cedarcreek.com" autocomplete="email">
-  <button class="btn" id="sendLink">Email me a link</button>
+  <input type="password" id="pw" placeholder="Password" autocomplete="current-password">
+  <button class="btn" id="pwSignIn">Sign in</button>
+  <button class="btn" id="sendLink" style="margin-top:10px;background:#fff;color:var(--brand);border:1px solid var(--line-strong)">No password yet? Email me a link</button>
   <p id="authMsg" style="margin-top:12px"></p>
 </div>
 
 <div id="appView" class="hidden">
 <header>
   <h1>Variance tracker</h1>
-  <span class="sub" id="whoami"></span>
+  <span class="sub" id="whoami" title="Set or change your password" style="cursor:pointer"></span>
   <span class="spacer"></span>
   <button onclick="location.href='/index.html'">Permits</button>
   <button onclick="location.href='/schedule.html'">Field Desk</button>
@@ -734,6 +744,24 @@ document.getElementById('sendLink').onclick=async()=>{
     options:{emailRedirectTo:window.location.href}});
   m.textContent = error ? error.message : 'Link sent. Check your email.';
   m.className = error ? 'err' : '';
+};
+document.getElementById('pwSignIn').onclick=async()=>{
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('pw').value;
+  const m=document.getElementById('authMsg');
+  if(!email||!password){ m.textContent='Enter your email and password.'; m.className='err'; return; }
+  m.className=''; m.textContent='Signing in\u2026';
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(error){ m.textContent=error.message; m.className='err'; }
+  else location.reload();
+};
+document.getElementById('whoami').onclick=async()=>{
+  const p1=prompt('New password for this account (8+ characters):');
+  if(p1===null) return;
+  if(p1.length<8){ alert('Use at least 8 characters.'); return; }
+  const {error}=await sb.auth.updateUser({password:p1});
+  alert(error ? 'Could not set it: '+error.message
+              : 'Password set. Use it to sign in on any device, including the iPad app. Change it any time by clicking your email up here.');
 };
 document.getElementById('signOut').onclick=async()=>{
   await sb.auth.signOut(); location.reload();
