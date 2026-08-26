@@ -172,6 +172,11 @@ tr.grp td{background:#FAFAF9;font-weight:700;font-size:12px;color:var(--th);text
 .m-x{margin-left:auto;background:none;border:0;color:var(--text-3);font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
 .m-x:hover{color:var(--brand)}
 .m-b{padding:16px 18px;overflow:auto;flex:1}
+.pics{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+.pics .ph{position:relative}
+.pics img{width:86px;height:86px;object-fit:cover;border-radius:8px;border:1px solid #D8D8D6;cursor:pointer;display:block}
+.pics .rm{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;
+  border:0;background:#BA0517;color:#fff;font-size:13px;line-height:22px;cursor:pointer;padding:0}
 .m-f{padding:11px 18px;border-top:1px solid var(--border);background:#FAFAF9;display:flex;gap:8px;align-items:center;
   border-radius:0 0 var(--r) var(--r)}
 .m-f .sp{flex:1}
@@ -1081,6 +1086,11 @@ function editor(jobId,tid){
         <button class="btn" data-addsub="edWho" style="margin-top:6px">New Contractor</button></div>
       <div class="fld"><label>Note</label>
         <textarea id="edNote" rows="2" placeholder="e.g. Artur confirmed Thursday">${esc(rec.note)}</textarea></div>
+      <div class="fld"><label>Photos</label>
+        <div class="pics" id="edPics"></div>
+        <button class="btn" id="edAddPic">Add Photo</button>
+        <input type="file" id="edPicFile" accept="image/*" multiple hidden>
+        <div class="help">Photos save the moment they upload — no need to hit Save. Tap one to see it full size.</div></div>
       <div class="fld"><label>Waiting on</label><div class="deps">${deps}</div></div>
       ${blocks?`<div class="fld"><label>Marking this complete releases</label><div class="deps">${blocks}</div></div>`:''}
       <div class="fld"><label>Position</label><div class="deps">
@@ -1145,6 +1155,54 @@ function editor(jobId,tid){
       LIST[jobId].forEach((x,i)=>x.i=i);
       delete STATE[jobId][tid]; close(); recompute(); render(view); persist(jobId);
     };
+    /* ---- per-task photos ---- */
+    const picWrap=node.querySelector('#edPics'), picBtn=node.querySelector('#edAddPic'),
+          picFile=node.querySelector('#edPicFile');
+    const recPics=()=>{const M=STATE[jobId][tid]; M.pics=M.pics||[]; return M.pics};
+    const picUrl=pt=>db?db.storage.from('site-photos').getPublicUrl(pt).data.publicUrl:'';
+    const drawPics=()=>{
+      picWrap.innerHTML=recPics().map((ph,i)=>`<span class="ph">
+        <img src="${picUrl(ph.p)}" loading="lazy" data-pi="${i}" alt="site photo">
+        <button class="rm" data-rm="${i}" title="Remove photo">&times;</button></span>`).join('')
+        ||'<span class="help">None yet.</span>';
+      picWrap.querySelectorAll('img[data-pi]').forEach(im=>im.onclick=()=>window.open(im.src,'_blank'));
+      picWrap.querySelectorAll('[data-rm]').forEach(b=>b.onclick=async()=>{
+        if(!confirm('Remove this photo?')) return;
+        const arr=recPics(), [gone]=arr.splice(+b.dataset.rm,1);
+        drawPics(); persist(jobId);
+        if(db&&gone) db.storage.from('site-photos').remove([gone.p]).then(()=>{},()=>{});
+      });
+    };
+    const shrink=file=>new Promise((res,rej)=>{
+      const img=new Image();
+      img.onload=()=>{const max=1600,sc=Math.min(1,max/Math.max(img.width,img.height));
+        const c=document.createElement('canvas');
+        c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        URL.revokeObjectURL(img.src);
+        c.toBlob(b=>b?res(b):rej(new Error('convert')), 'image/jpeg', .8)};
+      img.onerror=()=>rej(new Error('That photo format could not be read'));
+      img.src=URL.createObjectURL(file);
+    });
+    picBtn.onclick=()=>{ if(!db){alert('Photos need the online database — sign in first.');return} picFile.click(); };
+    picFile.onchange=async()=>{
+      const files=[...picFile.files]; picFile.value='';
+      if(!files.length) return;
+      picBtn.disabled=true;
+      for(let n=0;n<files.length;n++){
+        picBtn.textContent='Uploading '+(n+1)+' of '+files.length+'\u2026';
+        try{
+          const blob=await shrink(files[n]);
+          const path=jobId+'/'+tid+'/'+Date.now()+'-'+n+'.jpg';
+          const {error}=await db.storage.from('site-photos').upload(path,blob,{contentType:'image/jpeg'});
+          if(error) throw new Error(error.message);
+          recPics().push({p:path,on:iso(TODAY)});
+          drawPics(); persist(jobId);
+        }catch(err){ alert('Photo '+(n+1)+' did not upload: '+err.message); }
+      }
+      picBtn.disabled=false; picBtn.textContent='Add Photo';
+    };
+    drawPics();
     node.querySelector('#edDue').focus();
   });
 }
