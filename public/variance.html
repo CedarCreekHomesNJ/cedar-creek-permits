@@ -173,6 +173,13 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
 
 <div class="wrap">
 
+  <div class="filters" style="padding:0 0 14px">
+    <button class="btn" id="vwActive">Active</button>
+    <button class="btn btn-plain" id="vwReady">Ready to Build <span class="count" id="readyCount" style="background:rgba(255,255,255,.25);color:inherit">0</span></button>
+  </div>
+
+  <div id="mainActive">
+
   <div class="card">
     <h2>Needs attention <span class="count" id="stallCount">0</span></h2>
     <ul class="attn" id="stallList"></ul>
@@ -216,6 +223,13 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
         <tbody id="rows"></tbody>
       </table>
     </div>
+  </div>
+
+  </div>
+
+  <div class="card hidden" id="mainReady">
+    <h2>Ready to Build</h2>
+    <ul class="attn" id="readyList"></ul>
   </div>
 
 </div>
@@ -277,7 +291,7 @@ const OPTS = {
   overall_status:['Open','Closed']
 };
 
-let LOTS=[], filterStage=new Set(), filterPits=new Set();
+let LOTS=[], filterStage=new Set(), filterPits=new Set(), mainView='active';
 const PITS=['Done','Scheduled','Not done','Not recorded'];
 function pitBucket(l){ const v=l.test_pits;
   return v==='Yes'?'Done':v==='Scheduled'?'Scheduled':v==='No'?'Not done':'Not recorded' }
@@ -400,13 +414,35 @@ function esc(s){ return (s??'').toString()
 
 /* ---------- render ---------- */
 function render(){
+  const handedOff = l => !!l.ready_to_build;
+  const readyLots = LOTS.filter(handedOff);
+  const activeLots = LOTS.filter(l=>!handedOff(l));
+
+  document.getElementById('vwActive').className='btn'+(mainView==='active'?'':' btn-plain');
+  document.getElementById('vwReady').className='btn'+(mainView==='ready'?'':' btn-plain');
+  document.getElementById('readyCount').textContent=readyLots.length;
+  document.getElementById('mainActive').classList.toggle('hidden', mainView!=='active');
+  document.getElementById('mainReady').classList.toggle('hidden', mainView!=='ready');
+
+  document.getElementById('readyList').innerHTML = readyLots.length ? readyLots
+    .sort((a,b)=>(b.ready_to_build_date||'').localeCompare(a.ready_to_build_date||''))
+    .map(l=>`
+    <li data-id="${l.id}">
+      <span class="pill p-ok">Handed off${l.ready_to_build_date?' '+fmt(l.ready_to_build_date):''}</span>
+      <span class="id">${esc(lotName(l))}${l.pds_number?' · '+esc(l.pds_number):''}</span>
+      <span class="why">Permit package created · Field Desk job ${esc(l.field_desk_job_id)}</span>
+    </li>`).join('')
+    : '<li class="empty">Nothing here yet. Lots move here once Ready to Build is checked and the handoff completes.</li>';
+
+  if (mainView!=='active') return;
+
   const q=document.getElementById('q').value.toLowerCase().trim();
   const tw=document.getElementById('fTownship').value;
   const pm=document.getElementById('fPm').value;
   const st=document.getElementById('fStatus').value;
-  const scope = LOTS.filter(l=> !st || l.overall_status===st);
+  const scope = activeLots.filter(l=> !st || l.overall_status===st);
 
-  const shown = LOTS.filter(l=>{
+  const shown = activeLots.filter(l=>{
     if (st && l.overall_status!==st) return false;
     if (tw && l.township!==tw) return false;
     if (pm && l.project_manager!==pm) return false;
@@ -422,7 +458,7 @@ function render(){
 
   /* attention list — open lots only, worst first */
   const flagged=[];
-  LOTS.filter(l=>l.overall_status!=='Closed').forEach(l=>{
+  activeLots.filter(l=>l.overall_status!=='Closed').forEach(l=>{
     stalls(l).forEach(s=>flagged.push({l,s}));
   });
   flagged.sort((a,b)=> (a.s.sev===b.s.sev ? (b.s.days||0)-(a.s.days||0)
@@ -438,7 +474,7 @@ function render(){
     : '<li class="empty">Nothing stalled. Every open lot is moving.</li>';
 
   /* PDS worklist: ranked lots PDS still has to finish, in your order */
-  const pds = LOTS.filter(l=>l.pds_priority && l.overall_status!=='Closed' && stageOf(l)<5)
+  const pds = activeLots.filter(l=>l.pds_priority && l.overall_status!=='Closed' && stageOf(l)<5)
     .sort((a,b)=>a.pds_priority-b.pds_priority || String(a.block).localeCompare(String(b.block)));
   document.getElementById('pdsCount').textContent=pds.length;
   document.getElementById('pdsList').innerHTML = pds.length ? pds.map(l=>`
@@ -734,6 +770,11 @@ document.getElementById('stallList').onclick=e=>{
   const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
 };
 document.getElementById('pdsList').onclick=e=>{
+  const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
+};
+document.getElementById('vwActive').onclick=()=>{mainView='active';render()};
+document.getElementById('vwReady').onclick=()=>{mainView='ready';render()};
+document.getElementById('readyList').onclick=e=>{
   const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
 };
 document.getElementById('addLot').onclick=()=>openLot(null);
