@@ -244,6 +244,7 @@ input[type=checkbox]{width:auto}
     <button role="tab" aria-selected="false" data-v="jobs">Job Sheet</button>
     <button role="tab" aria-selected="false" data-v="trades">Trades</button>
     <button role="tab" aria-selected="false" data-v="look">6-Week Look-Ahead</button>
+    <button role="tab" aria-selected="false" data-v="postclose">Post Closing</button>
   </nav>
   <a href="/variance.html" style="color:inherit;text-decoration:none;font-size:13px;opacity:.75;margin-left:14px">Variance</a>
   <a href="/index.html" style="color:inherit;text-decoration:none;font-size:13px;opacity:.75;margin-left:14px">Permits</a>
@@ -862,8 +863,34 @@ function pathBar(P){
       <span class="c">${done} of ${tasks.length} complete</span></div>`}).join('')}</div>`;
 }
 
+
+function vPostClosing(){
+  const closed=JOBS.filter(j=>j.closed);
+  if(!closed.length) return `<div class="card"><div class="card-h">${tile('check','var(--brand)','sm')}
+    <div class="t">Post Closing</div></div>
+    <div class="empty" style="padding:30px 20px"><div class="t">Nothing here yet</div>
+    Jobs move to Post Closing once they're marked <b>Closed \u2014 CO issued</b> from Edit Job. Warranty tracking picks up right where the build left off.</div></div>`;
+  return `<div class="card"><div class="card-h">${tile('check','var(--brand)','sm')}
+    <div class="t">Post Closing <small>\u00b7 ${closed.length} closed job${closed.length===1?'':'s'}</small></div></div>
+    <div style="padding:14px">
+    ${closed.map(j=>{
+      const wq=WARR[j.id]||[];
+      const over=wq.filter(w=>!w.done&&!w.resp&&w.req&&Math.round((TODAY-D(w.req))/864e5)>30).length;
+      return `<div style="border:1px solid var(--border);border-radius:8px;padding:13px 15px;margin-bottom:11px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px">
+          <b>${esc(j.name)}</b>
+          <div style="font-size:11.5px;color:var(--text-3)">${esc(j.town)} \u00b7 ${esc(j.bl)} \u00b7 CO issued ${fmtL(D(j.target))}</div></div>
+        ${wq.length?`<span class="badge ${over?'error':'success'}">${wq.length} warranty request${wq.length===1?'':'s'}${over?' \u00b7 '+over+' overdue':''}</span>`
+                   :`<span class="badge">No warranty requests yet</span>`}
+        <button class="btn brand" data-pcwarr="${j.id}">Warranty</button>
+        <button class="btn" data-pcjob="${j.id}">Job Sheet</button>
+      </div>`;
+    }).join('')}
+    </div></div>`;
+}
+
 function vJobs(){
-  if(!PLAN.find(p=>p.job.id===jobTab)) jobTab=PLAN[0].job.id;
+  if(!PLAN.find(p=>p.job.id===jobTab)) jobTab=(PLAN.find(p=>!p.job.closed)||PLAN[0]).job.id;
   const P=PLAN.find(p=>p.job.id===jobTab);
   const q=query.trim().toLowerCase();
   const keep=r=>{
@@ -905,7 +932,7 @@ function vJobs(){
       <div class="t">${esc(P.job.name)} <small>· ${esc(P.job.town)} · ${esc(P.job.bl)}</small></div>
       ${P.job.closed?'<span class="badge success">Closed</span>':paceBadge(P)}</div>
     <div style="padding:10px 14px;display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--divider)">
-      ${PLAN.map(p=>`<button class="btn ${p.job.id===jobTab?'on':''}" data-jt="${p.job.id}">${esc(p.job.name)}</button>`).join('')}
+      ${PLAN.filter(p=>!p.job.closed).map(p=>`<button class="btn ${p.job.id===jobTab?'on':''}" data-jt="${p.job.id}">${esc(p.job.name)}</button>`).join('')}
       <button class="btn" id="newJob">New Job</button></div>
     ${pathBar(P)}
     <div class="ph-fields" style="padding:0 14px 12px;margin:0;border-top:0">
@@ -1579,7 +1606,7 @@ function render(v){
   view=v;
   const host=document.getElementById('view');
   host.innerHTML='';
-  host.appendChild(el(`<div>${({today:vToday,jobs:vJobs,trades:vTrades,look:vLook})[v]()}</div>`));
+  host.appendChild(el(`<div>${({today:vToday,jobs:vJobs,trades:vTrades,look:vLook,postclose:vPostClosing})[v]()}</div>`));
   host.querySelectorAll('[data-j]').forEach(n=>n.onclick=()=>{sel=sel===n.dataset.j?null:n.dataset.j;render('today')});
   host.querySelectorAll('[data-jt]').forEach(n=>n.onclick=()=>{jobTab=n.dataset.jt;render('jobs')});
   host.querySelectorAll('[data-edit]').forEach(n=>n.onclick=e=>{
@@ -1592,6 +1619,8 @@ function render(v){
   host.querySelectorAll('[data-lo]').forEach(n=>n.onclick=()=>{lookOff+=+n.dataset.lo;render('look')});
   const lt=host.querySelector('#loToday'); if(lt) lt.onclick=()=>{lookOff=0;render('look')};
   const jw=host.querySelector('#jobWarr'); if(jw) jw.onclick=()=>warrantyModal(jobTab);
+  host.querySelectorAll('[data-pcwarr]').forEach(n=>n.onclick=()=>warrantyModal(n.dataset.pcwarr));
+  host.querySelectorAll('[data-pcjob]').forEach(n=>n.onclick=()=>{jobTab=n.dataset.pcjob;render('jobs')});
   host.querySelectorAll('[data-addph]').forEach(n=>n.onclick=e=>{
     e.stopPropagation(); addTask(jobTab,null,n.dataset.addph)});
   const jq=host.querySelector('#jq');
