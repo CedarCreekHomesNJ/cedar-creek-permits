@@ -477,8 +477,13 @@ function render(){
   const pds = activeLots.filter(l=>l.pds_priority && l.overall_status!=='Closed' && stageOf(l)<5)
     .sort((a,b)=>a.pds_priority-b.pds_priority || String(a.block).localeCompare(String(b.block)));
   document.getElementById('pdsCount').textContent=pds.length;
-  document.getElementById('pdsList').innerHTML = pds.length ? pds.map(l=>`
+  const arrowBtn=(dir,disabled)=>`<button data-reorder="${dir}" ${disabled?'disabled':''}
+      style="width:22px;height:22px;border-radius:4px;border:1px solid var(--line-strong);
+      background:#fff;color:var(--brand);font-size:11px;line-height:1;cursor:pointer;
+      ${disabled?'opacity:.3;cursor:default':''}">${dir==='up'?'\u25b2':'\u25bc'}</button>`;
+  document.getElementById('pdsList').innerHTML = pds.length ? pds.map((l,i)=>`
     <li data-id="${l.id}">
+      <span style="display:flex;gap:3px;flex-direction:column">${arrowBtn('up',i===0)}${arrowBtn('down',i===pds.length-1)}</span>
       <span class="pill p-neutral">#${l.pds_priority}</span>
       <span class="id">${esc(lotName(l))}${(l.block&&l.lot&&l.address)?' · '+esc(l.address):''}${l.pds_number?' · '+esc(l.pds_number):''}</span>
       <span class="why">${esc(STAGES[stageOf(l)])} — ${esc(nextAction(l))}</span>
@@ -518,6 +523,20 @@ function render(){
 }
 
 /* ---------- drawer ---------- */
+
+function priorityField(l){
+  const others=LOTS.filter(x=>x.id!==l.id && x.pds_priority!=null);
+  const usedBy=new Map(others.map(x=>[x.pds_priority,x]));
+  const range=Math.max(10, ...others.map(x=>x.pds_priority), l.pds_priority||0);
+  let opts='';
+  for(let n=1;n<=range;n++){
+    if(n===l.pds_priority) opts+=`<option value="${n}" selected>${n}</option>`;
+    else if(usedBy.has(n)) opts+=`<option disabled>${n} \u2014 ${esc(lotName(usedBy.get(n)))}</option>`;
+    else opts+=`<option value="${n}">${n}</option>`;
+  }
+  return `<select data-k="pds_priority"><option value=""${!l.pds_priority?' selected':''}>None</option>${opts}</select>`;
+}
+
 let editing=null;
 function field(l,key,label,type='text'){
   if (OPTS[key]) return `<div class="f"><label>${label}</label><select data-k="${key}">
@@ -544,8 +563,8 @@ function openLot(id){
       ${field(l,'block','Block')}${field(l,'lot','Lot')}
       ${field(l,'address','Address')}${field(l,'township','Township')}
       ${field(l,'project_manager','Project manager')}${field(l,'sell_build','Sell or build')}
-      ${field(l,'overall_status','Status')}${field(l,'pds_phase','PDS phase (1-5)','number')}
-      ${field(l,'pds_number','PDS #')}${field(l,'pds_priority','PDS priority (1 = first)','number')}
+      ${field(l,'overall_status','Status')}${field(l,'pds_number','PDS #')}
+      <div class="f"><label>PDS priority (1 = first)</label>${priorityField(l)}</div>
     </div></fieldset>
     <fieldset><legend>Engineering and submission</legend><div class="grid">
       ${field(l,'survey_complete','Survey complete')}
@@ -680,7 +699,7 @@ async function saveLot(){
   document.querySelectorAll('#dBody [data-k]').forEach(el=>{
     const k=el.dataset.k;
     if (el.type==='checkbox') patch[k]=el.checked;
-    else if (el.type==='number') patch[k]= el.value===''?null:Number(el.value);
+    else if (el.type==='number' || k==='pds_priority') patch[k]= el.value===''?null:Number(el.value);
     else patch[k]= el.value===''?null:el.value;
   });
   if ((!patch.block || !patch.lot) && !patch.address){
@@ -769,7 +788,24 @@ document.getElementById('rows').onclick=e=>{
 document.getElementById('stallList').onclick=e=>{
   const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
 };
-document.getElementById('pdsList').onclick=e=>{
+document.getElementById('pdsList').onclick=async e=>{
+  const btn=e.target.closest('[data-reorder]');
+  if (btn){
+    const li=e.target.closest('li[data-id]');
+    const pds = LOTS.filter(l=>l.pds_priority && l.overall_status!=='Closed' && stageOf(l)<5)
+      .sort((a,b)=>a.pds_priority-b.pds_priority || String(a.block).localeCompare(String(b.block)));
+    const i=pds.findIndex(l=>l.id===li.dataset.id);
+    const j=btn.dataset.reorder==='up'?i-1:i+1;
+    if (j<0||j>=pds.length) return;
+    const A=pds[i], B=pds[j], pa=A.pds_priority, pb=B.pds_priority;
+    A.pds_priority=pb; B.pds_priority=pa;
+    await Promise.all([
+      sb.from('variance_lots').update({pds_priority:pb}).eq('id',A.id),
+      sb.from('variance_lots').update({pds_priority:pa}).eq('id',B.id)
+    ]);
+    render();
+    return;
+  }
   const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
 };
 document.getElementById('vwActive').onclick=()=>{mainView='active';render()};
