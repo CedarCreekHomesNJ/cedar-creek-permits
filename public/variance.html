@@ -585,9 +585,13 @@ function openLot(id){
     </div></fieldset>
     <fieldset><legend>County approvals</legend><div class="grid">
       ${field(l,'test_pits','Test pits')}${field(l,'test_pits_date','Test pits date','date')}
+      <div class="f full"><label>Test pits notes</label><input type="text" data-k="test_pits_note" value="${esc(l.test_pits_note??'')}"></div>
       ${field(l,'twa_status','TWA')}${field(l,'twa_date','TWA date','date')}
+      <div class="f full"><label>TWA notes</label><input type="text" data-k="twa_note" value="${esc(l.twa_note??'')}"></div>
       ${field(l,'ochd_status','OCHD')}${field(l,'ochd_date','OCHD date','date')}
+      <div class="f full"><label>OCHD notes</label><input type="text" data-k="ochd_note" value="${esc(l.ochd_note??'')}"></div>
       ${field(l,'ocscd_status','OCSCD')}${field(l,'ocscd_date','OCSCD date','date')}
+      <div class="f full"><label>OCSCD notes</label><input type="text" data-k="ocscd_note" value="${esc(l.ocscd_note??'')}"></div>
     </div></fieldset>
     <fieldset><legend>Compliance and plans</legend><div class="grid">
       ${field(l,'resolution_compliance','Resolution compliance')}
