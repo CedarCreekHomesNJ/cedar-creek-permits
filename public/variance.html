@@ -217,7 +217,7 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
     <div class="tbl-scroll">
       <table>
         <thead><tr>
-          <th>Block / lot</th><th>PDS #</th><th>Township</th><th>Stage</th><th>Progress</th>
+          <th>Block / lot</th><th>PDS #</th><th>Township</th><th>Stage</th><th>Last Update</th><th>Progress</th>
           <th>What's next</th><th>Flag</th><th>Manager</th>
         </tr></thead>
         <tbody id="rows"></tbody>
@@ -406,6 +406,16 @@ function stalls(l){
 
 /* ---------- helpers ---------- */
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}
+function daysSince(ts){
+  if(!ts) return null;
+  const d=new Date(ts); d.setHours(0,0,0,0);
+  return Math.round((today()-d)/86400000);
+}
+function fmtDays(n){
+  if(n===0) return 'Today';
+  if(n===1) return '1 day';
+  return n+' days';
+}
 function fmt(d){ if(!d) return '—';
   const [y,m,dd]=d.split('-'); return `${+m}/${+dd}/${y.slice(2)}` }
 function lotName(l){ return (l.block&&l.lot) ? `Block ${l.block} · Lot ${l.lot}` : (l.address||'No block/lot yet') }
@@ -514,12 +524,16 @@ function render(){
       <td>${esc(l.pds_number||'—')}</td>
       <td>${esc(l.township||'—')}</td>
       <td>${esc(STAGES[s])}</td>
+      <td>${(()=>{ const d=daysSince(l.updated_at);
+        if(d===null) return '—';
+        const c=d>=30?'p-bad':d>=14?'p-warn':'p-neutral';
+        return `<span class="pill ${c}">${fmtDays(d)}</span>`; })()}</td>
       <td><span class="bar"><i style="width:${Math.round(s/13*100)}%"></i></span></td>
       <td class="next">${esc(nextAction(l))}</td>
       <td>${sl.length?`<span class="pill ${worst}">${sl.length}</span>`:''}</td>
       <td>${esc(l.project_manager||'—')}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="8" class="empty">No lots match these filters.</td></tr>';
+  }).join('') || '<tr><td colspan="9" class="empty">No lots match these filters.</td></tr>';
 }
 
 /* ---------- drawer ---------- */
