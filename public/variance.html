@@ -525,7 +525,7 @@ function render(){
       <td>${esc(l.pds_number||'—')}</td>
       <td>${esc(l.township||'—')}</td>
       <td>${esc(STAGES[s])}</td>
-      <td>${(()=>{ const d=daysSince(l.updated_at);
+      <td>${(()=>{ const d=daysSince(l.last_phase_date);
         if(d===null) return '—';
         const c=d>=30?'p-bad':d>=14?'p-warn':'p-neutral';
         return `<span class="pill ${c}">${fmtDays(d)}</span>`; })()}</td>
