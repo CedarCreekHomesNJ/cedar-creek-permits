@@ -286,6 +286,7 @@ const OPTS = {
   ochd_status:['','Not Received','Approved'],
   ocscd_status:['','Not Mailed','Application & Check Mailed','Approved'],
   twa_status:['','Not needed','Requested','Mailed','Approved'],
+  stormwater_status:['','Needed','Not needed'],
   resolution_compliance:['','Not Received','Submitted','Received','Approved'],
   sell_build:['','Build','Sell'],
   overall_status:['Open','Closed']
@@ -606,6 +607,8 @@ function openLot(id){
       <div class="f full"><label>OCHD notes</label><input type="text" data-k="ochd_note" value="${esc(l.ochd_note??'')}"></div>
       ${field(l,'ocscd_status','OCSCD')}${field(l,'ocscd_date','OCSCD date','date')}
       <div class="f full"><label>OCSCD notes</label><input type="text" data-k="ocscd_note" value="${esc(l.ocscd_note??'')}"></div>
+      ${field(l,'stormwater_status','Storm Water Report')}${field(l,'stormwater_date','Storm Water date','date')}
+      <div class="f full"><label>Storm Water notes</label><input type="text" data-k="stormwater_note" value="${esc(l.stormwater_note??'')}"></div>
     </div></fieldset>
     <fieldset><legend>Compliance and plans</legend><div class="grid">
       ${field(l,'resolution_compliance','Resolution compliance')}
