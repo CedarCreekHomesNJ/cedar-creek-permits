@@ -350,7 +350,9 @@ function nextAction(l){
     if (l.ocscd_status!=='Approved') w.push('OCSCD');
     return w.length ? 'Waiting on '+w.join(', ') : 'Confirm county approvals';
   }
-  if (s===10) return 'Get resolution compliance approved';
+  if (s===10) return l.resolution_compliance==='Approved'
+      ? 'Confirm requirements satisfied'
+      : 'Get resolution compliance approved';
   if (s===11) return 'Order the house plans';
   if (s===12) return l.house_plans_picked_up
       ? 'Flip Ready to build to start permits and the build'
@@ -742,6 +744,11 @@ async function saveLot(){
     msg.textContent='Creating permit package and Field Desk job…';
     notes = await handoff(editing, patch);
   }
+  const PHASE_DATE_FIELDS=['hearing_date','variance_approval_date','resolution_date',
+    'test_pits_date','twa_date','ochd_date','ocscd_date','stormwater_date',
+    'compliance_date','house_plans_ordered_date','ready_to_build_date'];
+  if (PHASE_DATE_FIELDS.some(f => (patch[f]??null) !== (editing[f]??null)))
+    patch.last_phase_date=new Date().toISOString().slice(0,10);
   let res;
   if (editing.id) res = await sb.from('variance_lots').update(patch).eq('id',editing.id).select();
   else res = await sb.from('variance_lots').insert(patch).select();
