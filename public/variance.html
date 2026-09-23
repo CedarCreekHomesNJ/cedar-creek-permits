@@ -200,6 +200,12 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
     <ul class="attn" id="stallList"></ul>
   </div>
 
+  <div class="card hidden" id="pitBatchCard">
+    <h2>Test pits ready <span class="count" id="pitBatchCount">0</span></h2>
+    <p class="hint" style="margin:0 0 4px">Not done or scheduled yet — enough to send out as a batch.</p>
+    <ul class="attn" id="pitBatchList"></ul>
+  </div>
+
   <div class="card">
     <h2>PDS worklist <span class="count" id="pdsCount">0</span></h2>
     <ul class="attn" id="pdsList"></ul>
@@ -441,6 +447,25 @@ function lotName(l){ return (l.block&&l.lot) ? `Block ${l.block} · Lot ${l.lot}
 function esc(s){ return (s??'').toString()
   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
 
+/* ---------- natural block/lot sort (smallest to largest) ---------- */
+function natParts(s){ return (s??'').toString().match(/\d+|\D+/g) || []; }
+function natCompare(a,b){
+  const pa=natParts(a), pb=natParts(b);
+  const len=Math.max(pa.length,pb.length);
+  for (let i=0;i<len;i++){
+    const xa=pa[i]||'', xb=pb[i]||'';
+    const na=parseInt(xa,10), nb=parseInt(xb,10);
+    if (!isNaN(na) && !isNaN(nb)){ if (na!==nb) return na-nb; }
+    else if (xa!==xb) return xa<xb?-1:1;
+  }
+  return 0;
+}
+function blockLotCompare(a,b){
+  const ea=!a.block, eb=!b.block;
+  if (ea!==eb) return ea?1:-1; /* lots with no block/lot yet sort last */
+  return natCompare(a.block,b.block) || natCompare(a.lot,b.lot);
+}
+
 /* ---------- document repository ---------- */
 const VARIANCE_DOC_TEMPLATE=['Survey','Engineering Plans','Variance Application','Hearing & Resolution',
   'OCHD','OCSCD','TWA','Storm Water Report','Compliance Documents','House Plans'];
@@ -608,7 +633,7 @@ function render(){
       if (!hay.includes(q)) return false;
     }
     return true;
-  }).sort((a,b)=>(a.pds_priority??1e9)-(b.pds_priority??1e9) || stageOf(a)-stageOf(b) || String(a.block).localeCompare(String(b.block)));
+  }).sort(blockLotCompare);
 
   /* attention list — open lots only, worst first */
   const flagged=[];
@@ -626,6 +651,19 @@ function render(){
       <span class="age">${f.s.days!==null?f.s.days+' days':''}</span>
     </li>`).join('')
     : '<li class="empty">Nothing stalled. Every open lot is moving.</li>';
+
+  /* test pits ready for a batch — 3 or more not done/scheduled */
+  const pitReady = activeLots.filter(l=>l.overall_status!=='Closed'
+    && (pitBucket(l)==='Not done' || pitBucket(l)==='Not recorded'));
+  const pitCard=document.getElementById('pitBatchCard');
+  pitCard.classList.toggle('hidden', pitReady.length<3);
+  document.getElementById('pitBatchCount').textContent=pitReady.length;
+  document.getElementById('pitBatchList').innerHTML = pitReady.map(l=>`
+    <li data-id="${l.id}">
+      <span class="pill p-warn">Pits</span>
+      <span class="id">${esc(lotName(l))}</span>
+      <span class="why">${l.test_pits==='No'?'Marked not done':'Not recorded yet'}</span>
+    </li>`).join('');
 
   /* PDS worklist: ranked lots PDS still has to finish, in your order */
   const pds = activeLots.filter(l=>l.pds_priority && l.overall_status!=='Closed' && stageOf(l)<5)
@@ -963,6 +1001,9 @@ document.getElementById('rows').onclick=e=>{
   const tr=e.target.closest('tr[data-id]'); if(tr) openLot(tr.dataset.id);
 };
 document.getElementById('stallList').onclick=e=>{
+  const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
+};
+document.getElementById('pitBatchList').onclick=e=>{
   const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
 };
 document.getElementById('pdsList').onclick=async e=>{
