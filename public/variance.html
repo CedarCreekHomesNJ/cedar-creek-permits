@@ -195,6 +195,7 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
   <div class="filters" style="padding:0 0 14px">
     <button class="btn" id="vwActive">Active</button>
     <button class="btn btn-plain" id="vwReady">Ready to Build <span class="count" id="readyCount" style="background:rgba(255,255,255,.25);color:inherit">0</span></button>
+    <button class="btn btn-plain" id="vwSold">Sold / Swap <span class="count" id="soldCount" style="background:rgba(255,255,255,.25);color:inherit">0</span></button>
   </div>
 
   <div id="mainActive">
@@ -257,6 +258,12 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
     <ul class="attn" id="readyList"></ul>
   </div>
 
+  <div class="card hidden" id="mainSold">
+    <h2>Sold / Swap</h2>
+    <p class="hint" style="margin:0 0 4px">No longer ours to build on — kept separate from the active pipeline.</p>
+    <ul class="attn" id="soldList"></ul>
+  </div>
+
 </div>
 </div>
 
@@ -274,6 +281,7 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
     <button class="btn" id="dSave">Save changes</button>
     <button class="btn btn-plain" id="dCancel">Cancel</button>
     <button class="btn btn-plain" id="dEmail">Generate email</button>
+    <button class="btn danger hidden" id="dDelete">Delete lot</button>
     <span class="spacer" style="flex:1"></span>
     <span id="dMsg" style="font-size:13px;color:var(--muted)"></span>
   </div>
@@ -315,7 +323,7 @@ const OPTS = {
   twa_status:['','Not needed','Requested','Mailed','Approved'],
   stormwater_status:['','Needed','Not needed'],
   resolution_compliance:['','Not Received','Submitted','Received','Approved'],
-  sell_build:['','Build','Sell'],
+  sell_build:['','Build','Sell','Swap'],
   overall_status:['Open','Closed']
 };
 
@@ -391,8 +399,9 @@ function nextAction(l){
   if (s===12) return l.house_plans_picked_up
       ? 'Flip Ready to build to start permits and the build'
       : 'Pick up the house plans';
-  if (!l.sell_build) return 'Decide sell or build';
-  return l.sell_build==='Build' ? 'Handed off — building' : 'Ready to list';
+  if (!l.sell_build) return 'Decide sell, build, or swap';
+  if (l.sell_build==='Build') return 'Handed off — building';
+  return l.sell_build==='Swap' ? 'Set to swap — no longer ours to build' : 'Set to sell — no longer ours to build';
 }
 
 /* ---------- stall detection ---------- */
@@ -736,15 +745,20 @@ function notificationsModal(){
 
 /* ---------- render ---------- */
 function render(){
+  const soldOrSwap = l => l.sell_build==='Sell' || l.sell_build==='Swap';
   const handedOff = l => !!l.ready_to_build;
-  const readyLots = LOTS.filter(handedOff);
-  const activeLots = LOTS.filter(l=>!handedOff(l));
+  const soldLots = LOTS.filter(soldOrSwap);
+  const readyLots = LOTS.filter(l=>handedOff(l) && !soldOrSwap(l));
+  const activeLots = LOTS.filter(l=>!handedOff(l) && !soldOrSwap(l));
 
   document.getElementById('vwActive').className='btn'+(mainView==='active'?'':' btn-plain');
   document.getElementById('vwReady').className='btn'+(mainView==='ready'?'':' btn-plain');
+  document.getElementById('vwSold').className='btn'+(mainView==='sold'?'':' btn-plain');
   document.getElementById('readyCount').textContent=readyLots.length;
+  document.getElementById('soldCount').textContent=soldLots.length;
   document.getElementById('mainActive').classList.toggle('hidden', mainView!=='active');
   document.getElementById('mainReady').classList.toggle('hidden', mainView!=='ready');
+  document.getElementById('mainSold').classList.toggle('hidden', mainView!=='sold');
 
   document.getElementById('readyList').innerHTML = readyLots.length ? readyLots
     .sort((a,b)=>(b.ready_to_build_date||'').localeCompare(a.ready_to_build_date||''))
@@ -755,6 +769,16 @@ function render(){
       <span class="why">Permit package created · Field Desk job ${esc(l.field_desk_job_id)}</span>
     </li>`).join('')
     : '<li class="empty">Nothing here yet. Lots move here once Ready to Build is checked and the handoff completes.</li>';
+
+  document.getElementById('soldList').innerHTML = soldLots.length ? soldLots
+    .sort(blockLotCompare)
+    .map(l=>`
+    <li data-id="${l.id}">
+      <span class="pill ${l.sell_build==='Sell'?'p-neutral':'p-warn'}">${esc(l.sell_build)}</span>
+      <span class="id">${esc(lotName(l))}${l.pds_number?' · '+esc(l.pds_number):''}</span>
+      <span class="why">${esc(l.township||'')}${l.project_manager?' · '+esc(l.project_manager):''}</span>
+    </li>`).join('')
+    : '<li class="empty">Nothing here. Lots move here once Sell or Swap is chosen for them.</li>';
 
   if (mainView!=='active') return;
 
@@ -901,15 +925,19 @@ function openLot(id){
   document.getElementById('dTitle').textContent = id ? lotName(l) : 'New lot';
   const dDocsBtn = document.getElementById('dDocs');
   const dNotifyBtn = document.getElementById('dNotify');
+  const dDeleteBtn = document.getElementById('dDelete');
   if (id){
     dDocsBtn.classList.remove('hidden');
     dDocsBtn.textContent = 'Documents'+((l.documents||[]).length?' ('+l.documents.length+')':'');
     dDocsBtn.onclick = () => docsModal(l.id);
     dNotifyBtn.classList.remove('hidden');
     dNotifyBtn.onclick = () => notifyModal(l.id);
+    dDeleteBtn.classList.remove('hidden');
+    dDeleteBtn.onclick = deleteLot;
   } else {
     dDocsBtn.classList.add('hidden');
     dNotifyBtn.classList.add('hidden');
+    dDeleteBtn.classList.add('hidden');
   }
   const sl = id ? stalls(l) : [];
   const rtbOk = !!(l.requirements_satisfied && l.house_plans_picked_up);
@@ -1116,6 +1144,24 @@ async function saveLot(){
   } else closeDrawer();
 }
 
+async function deleteLot(){
+  if (!editing.id) return;
+  const name = lotName(editing);
+  if (!confirm('Delete '+name+'? This removes the lot and any documents attached to it permanently — it cannot be undone.'
+    +(editing.permit_package_id||editing.field_desk_job_id?' (Its linked permit package and Field Desk job are not touched — remove those separately if needed.)':'')))
+    return;
+  const msg=document.getElementById('dMsg');
+  msg.className=''; msg.textContent='Deleting…';
+  const paths=(editing.documents||[]).flatMap(f=>f.files.map(d=>d.p));
+  if (paths.length) await sb.storage.from('job-docs').remove(paths).then(()=>{},()=>{});
+  const {error} = await sb.from('variance_lots').delete().eq('id',editing.id);
+  if (error){ msg.textContent=error.message; msg.className='err'; return; }
+  const i=LOTS.findIndex(x=>x.id===editing.id);
+  if (i>=0) LOTS.splice(i,1);
+  closeDrawer();
+  render();
+}
+
 /* ---------- load ---------- */
 async function load(){
   const {data,error}=await sb.from('variance_lots').select('*');
@@ -1182,7 +1228,11 @@ document.getElementById('pdsList').onclick=async e=>{
 };
 document.getElementById('vwActive').onclick=()=>{mainView='active';render()};
 document.getElementById('vwReady').onclick=()=>{mainView='ready';render()};
+document.getElementById('vwSold').onclick=()=>{mainView='sold';render()};
 document.getElementById('readyList').onclick=e=>{
+  const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
+};
+document.getElementById('soldList').onclick=e=>{
   const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
 };
 document.getElementById('addLot').onclick=()=>openLot(null);
