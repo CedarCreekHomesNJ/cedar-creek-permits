@@ -136,6 +136,21 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
 .hint{font-size:12px;color:var(--muted);margin:8px 0 0}
 .hint.done{color:var(--ok)}
 
+/* documents modal */
+.mscrim{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:60;padding:16px}
+@media(max-width:640px){.mscrim{align-items:flex-end;padding:0}}
+.modal{background:#fff;border-radius:var(--radius);width:min(640px,100%);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 2px 12px rgba(0,0,0,.28)}
+.m-h{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:12px}
+.m-h .t{font-size:17px;font-weight:700;line-height:1.25}
+.m-h .s{font-size:12px;color:var(--muted);margin-top:2px}
+.m-x{margin-left:auto;background:none;border:0;color:var(--muted);font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
+.m-x:hover{color:var(--brand)}
+.m-b{padding:16px 18px;overflow:auto;flex:1}
+.m-f{padding:11px 18px;border-top:1px solid var(--line);background:#fafafa;display:flex;gap:8px;align-items:center;
+  border-radius:0 0 var(--radius) var(--radius)}
+.m-f .sp{flex:1}
+.btn.danger{background:var(--bad);color:#fff}
+
 /* auth */
 .auth{max-width:380px;margin:80px auto;background:#fff;border:1px solid var(--line);
   border-radius:var(--radius);padding:26px}
@@ -240,6 +255,7 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
   <header style="display:flex;align-items:center;gap:12px">
     <h2 id="dTitle">Lot</h2>
     <span class="spacer" style="flex:1"></span>
+    <button class="hidden" id="dDocs">Documents</button>
     <button id="dClose">Close</button>
   </header>
   <div class="dbody" id="dBody"></div>
@@ -425,6 +441,131 @@ function lotName(l){ return (l.block&&l.lot) ? `Block ${l.block} · Lot ${l.lot}
 function esc(s){ return (s??'').toString()
   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
 
+/* ---------- document repository ---------- */
+const VARIANCE_DOC_TEMPLATE=['Survey','Engineering Plans','Variance Application','Hearing & Resolution',
+  'OCHD','OCSCD','TWA','Storm Water Report','Compliance Documents','House Plans'];
+
+function mkEl(h){ const d=document.createElement('div'); d.innerHTML=h.trim(); return d.firstChild; }
+
+function modal(html,setup){
+  const node=mkEl(`<div class="mscrim">${html}</div>`);
+  document.body.appendChild(node);
+  const close=()=>{ node.remove(); document.removeEventListener('keydown',onKey); };
+  const onKey=e=>{ if(e.key==='Escape') close(); };
+  document.addEventListener('keydown',onKey);
+  node.onclick=e=>{ if(e.target===node) close(); };
+  node.querySelectorAll('[data-close]').forEach(b=>b.onclick=close);
+  setup(node,close);
+  return node;
+}
+
+function docsModal(lotId){
+  const l=LOTS.find(x=>x.id===lotId); if(!l) return;
+  l.documents = l.documents || [];
+  const F = l.documents;
+  const url = pt => sb.storage.from('job-docs').getPublicUrl(pt).data.publicUrl;
+  const persistDocs = async () => {
+    const {error} = await sb.from('variance_lots').update({documents:F}).eq('id', lotId);
+    if (error){ alert('Could not save documents: '+error.message); return; }
+    const btn=document.getElementById('dDocs');
+    if (btn && !btn.classList.contains('hidden'))
+      btn.textContent='Documents'+(F.length?' ('+F.length+')':'');
+  };
+  const rowsHtml = () => F.map((f,fi)=>`
+    <div style="border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <b style="flex:1;font-size:13.5px">${esc(f.name)}</b>
+        <button class="btn-plain" data-up="${fi}">Add Files</button>
+        <button class="btn danger" data-delf="${fi}">Delete Folder</button></div>
+      ${f.files.length?f.files.map((d,di)=>`
+        <div style="display:flex;align-items:center;gap:9px;margin-top:8px;font-size:13px">
+          <a href="${url(d.p)}" target="_blank" rel="noopener" style="flex:1;overflow-wrap:anywhere">${esc(d.name)}</a>
+          <span style="color:var(--muted);font-size:11.5px;white-space:nowrap">${d.on||''}</span>
+          <button class="m-x" data-deld="${fi}|${di}" title="Remove" style="position:static;font-size:15px">&times;</button>
+        </div>`).join('')
+      :'<div style="color:var(--muted);font-size:12px;margin-top:7px">No documents in this folder yet.</div>'}
+    </div>`).join('')
+    ||'<div style="color:var(--muted);font-size:13px">No folders yet. Name one above — e.g. "Survey" — and load its documents.</div>';
+
+  modal(`<div class="modal" role="dialog" aria-modal="true" aria-label="Documents">
+    <div class="m-h">
+      <div><div class="t">Documents</div><div class="s">${esc(lotName(l))}</div></div>
+      <button class="m-x" data-close aria-label="Close">&times;</button></div>
+    <div class="m-b">
+      ${F.length===0?`<div id="stdPick" style="border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px;margin-bottom:16px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:9px">Start from the standard folder set</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:11px">
+          ${VARIANCE_DOC_TEMPLATE.map((n,i)=>`<label style="display:flex;align-items:center;gap:5px;border:1px solid var(--line);
+            border-radius:6px;padding:5px 10px;font-size:12.5px;cursor:pointer">
+            <input type="checkbox" data-std="${i}" checked>${esc(n)}</label>`).join('')}</div>
+        <button class="btn" id="stdCreate">Create Selected Folders</button>
+        <span class="hint" style="margin-left:6px">Or skip this and add folders one at a time below.</span></div>`:''}
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <input id="nfName" placeholder='New folder — e.g. "Survey"'
+          style="flex:1;padding:8px 10px;border:1px solid var(--line-strong);border-radius:var(--radius);font:inherit">
+        <button class="btn" id="nfAdd">Create Folder</button></div>
+      <div id="docList"></div>
+      <input type="file" id="docFile" multiple hidden>
+    </div>
+    <div class="m-f"><span class="sp"></span><button class="btn" data-close>Done</button></div></div>`,
+  (node)=>{
+    const list=node.querySelector('#docList'), fileI=node.querySelector('#docFile');
+    let upTarget=null;
+    const draw=()=>{
+      list.innerHTML=rowsHtml();
+      if (F.length){ const sp=node.querySelector('#stdPick'); if (sp) sp.remove(); }
+      list.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ upTarget=+b.dataset.up; fileI.click(); });
+      list.querySelectorAll('[data-delf]').forEach(b=>b.onclick=async()=>{
+        const fi=+b.dataset.delf, f=F[fi];
+        if (!confirm('Delete the folder "'+f.name+'"'+(f.files.length?' and its '+f.files.length+' document(s)':'')+'? This cannot be undone.')) return;
+        const paths=f.files.map(d=>d.p);
+        F.splice(fi,1); draw(); await persistDocs();
+        if (paths.length) sb.storage.from('job-docs').remove(paths).then(()=>{},()=>{});
+      });
+      list.querySelectorAll('[data-deld]').forEach(b=>b.onclick=async()=>{
+        const [fi,di]=b.dataset.deld.split('|').map(Number);
+        const d=F[fi].files[di];
+        if (!confirm('Remove "'+d.name+'"?')) return;
+        F[fi].files.splice(di,1); draw(); await persistDocs();
+        sb.storage.from('job-docs').remove([d.p]).then(()=>{},()=>{});
+      });
+    };
+    const stdBtn=node.querySelector('#stdCreate');
+    if (stdBtn) stdBtn.onclick=async()=>{
+      const chosen=[...node.querySelectorAll('[data-std]:checked')]
+        .map(c=>VARIANCE_DOC_TEMPLATE[+c.dataset.std])
+        .filter(n=>!F.some(f=>f.name.toLowerCase()===n.toLowerCase()));
+      if (!chosen.length){ alert('Pick at least one folder, or add one manually below.'); return; }
+      chosen.forEach(n=>F.push({name:n,files:[]}));
+      await persistDocs(); draw();
+    };
+    node.querySelector('#nfAdd').onclick=async()=>{
+      const inp=node.querySelector('#nfName'), name=inp.value.trim();
+      if (!name){ inp.focus(); return; }
+      if (F.some(f=>f.name.toLowerCase()===name.toLowerCase())){ alert('That folder already exists.'); return; }
+      F.push({name,files:[]}); inp.value=''; draw(); await persistDocs();
+    };
+    fileI.onchange=async()=>{
+      const files=[...fileI.files]; fileI.value='';
+      if (upTarget===null || !files.length) return;
+      const fi=upTarget; upTarget=null;
+      for (let n=0;n<files.length;n++){
+        const f=files[n];
+        if (f.size>50*1024*1024){ alert('"'+f.name+'" is over 50MB — too big to store here.'); continue; }
+        const safe=f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        const path='variance/'+lotId+'/'+fi+'-'+Date.now()+'-'+n+'-'+safe;
+        try{
+          const {error}=await sb.storage.from('job-docs').upload(path,f,{contentType:f.type||'application/octet-stream'});
+          if (error) throw new Error(error.message);
+          F[fi].files.push({p:path,name:f.name,on:new Date().toISOString().slice(0,10)});
+          draw(); await persistDocs();
+        }catch(err){ alert('"'+f.name+'" did not upload: '+err.message); }
+      }
+    };
+    draw();
+  });
+}
+
 /* ---------- render ---------- */
 function render(){
   const handedOff = l => !!l.ready_to_build;
@@ -570,6 +711,14 @@ function openLot(id){
     variance_approval:'Not Yet Heard',resolution_status:'Not Received'};
   editing = l;
   document.getElementById('dTitle').textContent = id ? lotName(l) : 'New lot';
+  const dDocsBtn = document.getElementById('dDocs');
+  if (id){
+    dDocsBtn.classList.remove('hidden');
+    dDocsBtn.textContent = 'Documents'+((l.documents||[]).length?' ('+l.documents.length+')':'');
+    dDocsBtn.onclick = () => docsModal(l.id);
+  } else {
+    dDocsBtn.classList.add('hidden');
+  }
   const sl = id ? stalls(l) : [];
   const rtbOk = !!(l.requirements_satisfied && l.house_plans_picked_up);
   const pushed = !!(l.permit_package_id && l.field_desk_job_id);
