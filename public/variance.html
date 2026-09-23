@@ -350,6 +350,13 @@ function stageOf(l){
   if (l.ready_to_build) s = Math.max(s,13);
   return s;
 }
+/* stage 0 covers both "not started" and "survey in progress" (no dedicated
+   stage number for the latter, so this only changes the label shown) */
+function stageLabel(l){
+  const s = stageOf(l);
+  if (s===0 && l.survey_complete==='In-Progress') return 'Survey in progress';
+  return STAGES[s];
+}
 
 /* ---------- what's next ---------- */
 function nextAction(l){
@@ -360,7 +367,7 @@ function nextAction(l){
     return l.hearing_date && new Date(l.hearing_date)>=today()
       ? 'Carried — next hearing '+fmt(l.hearing_date)
       : 'Carried — get a new hearing date';
-  if (s<1) return 'Order the survey';
+  if (s<1) return l.survey_complete==='In-Progress' ? 'Survey in progress' : 'Order the survey';
   if (s===1) return 'Send to engineering';
   if (s===2) return 'Engineering to draw the plan';
   if (s===3) return 'Jeff to review and approve';
@@ -814,7 +821,7 @@ function render(){
       <span style="display:flex;gap:3px;flex-direction:column">${arrowBtn('up',i===0)}${arrowBtn('down',i===pds.length-1)}</span>
       <span class="pill p-neutral">#${l.pds_priority}</span>
       <span class="id">${esc(lotName(l))}${(l.block&&l.lot&&l.address)?' · '+esc(l.address):''}${l.pds_number?' · '+esc(l.pds_number):''}</span>
-      <span class="why">${esc(STAGES[stageOf(l)])} — ${esc(nextAction(l))}</span>
+      <span class="why">${esc(stageLabel(l))} — ${esc(nextAction(l))}</span>
     </li>`).join('')
     : '<li class="empty">No priorities set. Give a lot a PDS priority number and it shows up here until PDS finishes it.</li>';
 
@@ -841,7 +848,7 @@ function render(){
       <td class="lotid">${(l.block||l.lot)?esc(l.block||'—')+' / '+esc(l.lot||'—'):'<span style="color:var(--muted)">TBD</span>'}${l.pds_priority?' <span class="pill p-neutral">P'+l.pds_priority+'</span>':''}${l.address?'<br><span style="font-weight:400;color:var(--muted)">'+esc(l.address)+'</span>':''}</td>
       <td>${esc(l.pds_number||'—')}</td>
       <td>${esc(l.township||'—')}</td>
-      <td>${esc(STAGES[s])}</td>
+      <td>${esc(stageLabel(l))}</td>
       <td>${(()=>{ const d=daysSince(l.last_phase_date);
         if(d===null) return '—';
         const c=d>=30?'p-bad':d>=14?'p-warn':'p-neutral';
@@ -870,9 +877,16 @@ function priorityField(l){
 }
 
 let editing=null;
+/* display-only relabeling for option values whose stored form (kept for
+   compatibility with existing data/logic) reads differently than we want
+   it shown in the dropdown */
+const OPT_LABELS = {
+  test_pits: {'':'—','No':'Not scheduled','Scheduled':'Scheduled','Yes':'Completed'},
+};
+function optLabel(key,o){ return (OPT_LABELS[key] && OPT_LABELS[key][o]) ?? (o||'—'); }
 function field(l,key,label,type='text'){
   if (OPTS[key]) return `<div class="f"><label>${label}</label><select data-k="${key}">
-    ${OPTS[key].map(o=>`<option value="${esc(o)}"${(l[key]||'')===o?' selected':''}>${o||'—'}</option>`).join('')}
+    ${OPTS[key].map(o=>`<option value="${esc(o)}"${(l[key]||'')===o?' selected':''}>${esc(optLabel(key,o))}</option>`).join('')}
     </select></div>`;
   return `<div class="f"><label>${label}</label>
     <input type="${type}" data-k="${key}" value="${esc(l[key]??'')}"></div>`;
@@ -1088,7 +1102,7 @@ async function saveLot(){
     const body='Added to the PDS worklist at priority #'+row.pds_priority+'.\n\n'
       +(row.address?'Address: '+row.address+'\n':'')
       +(row.pds_number?'PDS #: '+row.pds_number+'\n':'')
-      +'Phase: '+STAGES[stageOf(row)]+'\n'
+      +'Phase: '+stageLabel(row)+'\n'
       +(row.township?'Township: '+row.township+'\n':'');
     location.href='mailto:'+TEAM+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
   }
