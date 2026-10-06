@@ -58,6 +58,7 @@ header button:hover{background:rgba(255,255,255,.12)}
 .attn li:hover{background:var(--brand-tint)}
 .attn .id{font-weight:600;min-width:120px}
 .attn .why{flex:1;min-width:220px}
+.attn .pdsno{min-width:90px;font-size:13px;color:var(--muted);white-space:nowrap}
 .attn .age{font-size:12px;color:var(--muted);white-space:nowrap}
 .empty{padding:16px;color:var(--muted)}
 
@@ -206,7 +207,8 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
   </div>
 
   <div class="card hidden" id="pitBatchCard">
-    <h2>Test pits ready <span class="count" id="pitBatchCount">0</span></h2>
+    <h2>Test pits ready <span class="count" id="pitBatchCount">0</span>
+      <button class="btn btn-plain" id="pitExport" style="float:right;padding:4px 10px;font-size:12px">Export list</button></h2>
     <p class="hint" style="margin:0 0 4px">Not done or scheduled yet — enough to send out as a batch.</p>
     <ul class="attn" id="pitBatchList"></ul>
   </div>
@@ -464,6 +466,7 @@ function fmtDays(n){
 }
 function fmt(d){ if(!d) return '—';
   const [y,m,dd]=d.split('-'); return `${+m}/${+dd}/${y.slice(2)}` }
+let PIT_READY = [];
 function lotName(l){ return (l.block&&l.lot) ? `Block ${l.block} · Lot ${l.lot}` : (l.address||'No block/lot yet') }
 function esc(s){ return (s??'').toString()
   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
@@ -822,6 +825,7 @@ function render(){
   /* test pits ready for a batch — 3 or more not done/scheduled */
   const pitReady = activeLots.filter(l=>l.overall_status!=='Closed'
     && (pitBucket(l)==='Not done' || pitBucket(l)==='Not recorded'));
+  PIT_READY = pitReady;
   const pitCard=document.getElementById('pitBatchCard');
   pitCard.classList.toggle('hidden', pitReady.length<3);
   document.getElementById('pitBatchCount').textContent=pitReady.length;
@@ -829,6 +833,7 @@ function render(){
     <li data-id="${l.id}">
       <span class="pill p-warn">Pits</span>
       <span class="id">${esc(lotName(l))}</span>
+      <span class="pdsno">${l.pds_number?'PDS # '+esc(l.pds_number):'PDS # —'}</span>
       <span class="why">${l.test_pits==='No'?'Marked not done':'Not recorded yet'}</span>
     </li>`).join('');
 
@@ -1202,6 +1207,16 @@ document.getElementById('rows').onclick=e=>{
 };
 document.getElementById('stallList').onclick=e=>{
   const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
+};
+document.getElementById('pitExport').onclick=()=>{
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const rows=[['Block','Lot','PDS #','Test pits status']].concat(PIT_READY.map(l=>[
+    l.block||'', l.lot||'', l.pds_number||'', l.test_pits==='No'?'Marked not done':'Not recorded yet']));
+  const csv='\ufeff'+rows.map(r=>r.map(q).join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='test-pits-ready-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
 };
 document.getElementById('pitBatchList').onclick=e=>{
   const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
