@@ -58,6 +58,8 @@ header button:hover{background:rgba(255,255,255,.12)}
 .attn li:hover{background:var(--brand-tint)}
 .attn .id{font-weight:600;min-width:120px}
 .attn .why{flex:1;min-width:220px}
+.flagcell{min-width:220px}
+.flagwhy{font-size:13px}
 .attn .pdsno{min-width:90px;font-size:13px;color:var(--muted);white-space:nowrap}
 .attn .age{font-size:12px;color:var(--muted);white-space:nowrap}
 .empty{padding:16px;color:var(--muted)}
@@ -201,11 +203,6 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
 
   <div id="mainActive">
 
-  <div class="card">
-    <h2>Needs attention <span class="count" id="stallCount">0</span></h2>
-    <ul class="attn" id="stallList"></ul>
-  </div>
-
   <div class="card hidden" id="pitBatchCard">
     <h2>Test pits ready <span class="count" id="pitBatchCount">0</span>
       <button class="btn btn-plain" id="pitExport" style="float:right;padding:4px 10px;font-size:12px">Export list</button></h2>
@@ -238,6 +235,10 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
         <option value="">Open and closed</option>
         <option value="Closed">Closed only</option>
       </select>
+      <select id="fFlag">
+        <option value="">All lots</option>
+        <option value="1">Needs attention only</option>
+      </select>
       <button class="btn-plain btn" id="clearF">Clear filters</button>
       <span class="spacer" style="flex:1"></span>
       <span id="rowCount" style="color:var(--muted);font-size:12px"></span>
@@ -246,7 +247,7 @@ legend{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.0
       <table>
         <thead><tr>
           <th>Block / lot</th><th>PDS #</th><th>Township</th><th>Stage</th><th>Last Update</th><th>Progress</th>
-          <th>What's next</th><th>Flag</th><th>Manager</th>
+          <th>What's next</th><th>Needs attention</th><th>Manager</th>
         </tr></thead>
         <tbody id="rows"></tbody>
       </table>
@@ -789,12 +790,16 @@ function render(){
   const tw=document.getElementById('fTownship').value;
   const pm=document.getElementById('fPm').value;
   const st=document.getElementById('fStatus').value;
+  const flagOnly=document.getElementById('fFlag').value==='1';
+  const flaggedN=activeLots.filter(l=>l.overall_status!=='Closed' && stalls(l).length).length;
+  document.getElementById('fFlag').options[1].textContent='Needs attention only ('+flaggedN+')';
   const scope = activeLots.filter(l=> !st || l.overall_status===st);
 
   const shown = activeLots.filter(l=>{
     if (st && l.overall_status!==st) return false;
     if (tw && l.township!==tw) return false;
     if (pm && l.project_manager!==pm) return false;
+    if (flagOnly && !stalls(l).length) return false;
     if (filterStage.size && !filterStage.has(stageOf(l))) return false;
     if (filterPits.size && !filterPits.has(pitBucket(l))) return false;
     if (q){
@@ -804,23 +809,6 @@ function render(){
     }
     return true;
   }).sort(blockLotCompare);
-
-  /* attention list — open lots only, worst first */
-  const flagged=[];
-  activeLots.filter(l=>l.overall_status!=='Closed').forEach(l=>{
-    stalls(l).forEach(s=>flagged.push({l,s}));
-  });
-  flagged.sort((a,b)=> (a.s.sev===b.s.sev ? (b.s.days||0)-(a.s.days||0)
-                                          : a.s.sev==='bad'?-1:1));
-  document.getElementById('stallCount').textContent=flagged.length;
-  document.getElementById('stallList').innerHTML = flagged.length ? flagged.map(f=>`
-    <li data-id="${f.l.id}">
-      <span class="pill ${f.s.sev==='bad'?'p-bad':'p-warn'}">${f.s.sev==='bad'?'Stalled':'Check'}</span>
-      <span class="id">${esc(lotName(f.l))}</span>
-      <span class="why">${esc(f.s.why)}</span>
-      <span class="age">${f.s.days!==null?f.s.days+' days':''}</span>
-    </li>`).join('')
-    : '<li class="empty">Nothing stalled. Every open lot is moving.</li>';
 
   /* test pits ready for a batch — 3 or more not done/scheduled */
   const pitReady = activeLots.filter(l=>l.overall_status!=='Closed'
@@ -884,7 +872,8 @@ function render(){
         return `<span class="pill ${c}">${fmtDays(d)}</span>`; })()}</td>
       <td><span class="bar"><i style="width:${Math.round(s/13*100)}%"></i></span></td>
       <td class="next">${esc(nextAction(l))}</td>
-      <td>${sl.length?`<span class="pill ${worst}">${sl.length}</span>`:''}</td>
+      <td class="flagcell">${sl.length?(()=>{ const top=sl.slice().sort((a,b)=>(a.sev===b.sev?(b.days||0)-(a.days||0):a.sev==='bad'?-1:1))[0];
+        return `<span class="pill ${worst}">${worst==='p-bad'?'Stalled':'Check'}</span> <span class="flagwhy">${esc(top.why)}</span>${sl.length>1?` <span style="color:var(--muted)">+${sl.length-1} more</span>`:''}`; })():''}</td>
       <td>${esc(l.project_manager||'—')}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="9" class="empty">No lots match these filters.</td></tr>';
@@ -1185,13 +1174,14 @@ async function load(){
 }
 
 /* ---------- events ---------- */
-['q','fTownship','fPm','fStatus'].forEach(id=>
+['q','fTownship','fPm','fStatus','fFlag'].forEach(id=>
   document.getElementById(id).addEventListener('input',render));
 document.getElementById('clearF').onclick=()=>{
   document.getElementById('q').value='';
   document.getElementById('fTownship').value='';
   document.getElementById('fPm').value='';
   document.getElementById('fStatus').value='Open';
+  document.getElementById('fFlag').value='';
   filterStage.clear(); filterPits.clear(); render();
 };
 document.getElementById('stageStrip').onclick=e=>{
@@ -1204,9 +1194,6 @@ document.getElementById('pitStrip').onclick=e=>{
 };
 document.getElementById('rows').onclick=e=>{
   const tr=e.target.closest('tr[data-id]'); if(tr) openLot(tr.dataset.id);
-};
-document.getElementById('stallList').onclick=e=>{
-  const li=e.target.closest('li[data-id]'); if(li) openLot(li.dataset.id);
 };
 document.getElementById('pitExport').onclick=()=>{
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
